@@ -72,7 +72,7 @@ export type Activity = {
     id: number;
     type: string;
     type_label: string;
-    payload: Record<string, string | undefined>;
+    payload: Record<string, string | boolean | undefined>;
     user?: { id: number; name: string } | null;
     created_at: string | null;
 };

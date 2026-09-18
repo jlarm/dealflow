@@ -153,33 +153,28 @@ Contact lists come in two formats, and the importer needs to handle both fully i
 
 ## Phase 7: Mailgun Webhooks and Reply Detection
 
-- **Event webhooks**: `POST /webhooks/mailgun/events`.
-  - Registered outside the `web` group (no CSRF), with a throttle.
-  - `VerifyMailgunSignature` middleware:
-    - Computes an HMAC-SHA256 of `timestamp.token` with the webhook signing key and compares it using `hash_equals`.
-    - Rejects stale timestamps.
-    - Stores each token in the cache briefly and rejects reuse.
-  - The controller stores the raw event (deduplicated by `event-data.id`), returns 200 immediately and dispatches `ProcessEmailEvent`.
-  - Mailgun event mapping:
-
-    | Mailgun event | Stored as |
-    |---|---|
-    | `delivered` | delivered |
-    | `opened` | opened |
-    | `clicked` | clicked |
-    | `failed` with `severity=permanent` | bounced |
-    | `complained` | complained |
-    | `unsubscribed` | unsubscribe |
-
-- **Reply detection**: Mailgun has no "replied" event, so replies arrive through **inbound Routes**.
-  - A Mailgun Route forwards mail for the reply-to domain to `POST /webhooks/mailgun/inbound`, using the same signature check.
-  - The reply is matched to the original send through the `In-Reply-To` / `References` headers and the stored `message_id`. If that fails, it falls back to the sender's email.
-- `ProcessEmailEvent`:
-  - A reply sets the status to `replied` (through `ChangeContactStatus`) and stops the enrollment.
-  - A bounce or complaint sets `email_status` and stops the enrollment.
-  - An unsubscribe sets `unsubscribed_at`.
-  - Opens and clicks write activities and optionally bump `score`.
-  - It can be re-run safely from stored events.
+- **`VerifyMailgunSignature`** checks an HMAC-SHA256 of `timestamp` + `token` against the webhook signing key, using `hash_equals`.
+  - Timestamps more than 15 minutes old are rejected.
+  - Each token is stored briefly in the cache, and a reused token is rejected.
+  - It reads both the JSON format (event webhooks) and form fields (inbound Routes).
+  - It fails closed: with no signing key configured, every webhook is rejected.
+- **Webhook routes** live in `routes/webhooks.php`, are exempt from CSRF, and are throttled.
+- **`POST /webhooks/mailgun/events`:**
+  - Mailgun events map as follows: `delivered`, `opened` and `clicked` keep their names, a permanent `failed` becomes bounced, and `complained` and `unsubscribed` keep theirs. `accepted` and temporary failures are ignored.
+  - The contact is found from the `contact_id` variable DealFlow attached when sending, then from the email's Message-ID (DealFlow's own, or the provider's), then from the recipient's address.
+  - The raw event is stored, deduplicated by Mailgun's event id, and `ProcessEmailEvent` is queued. Mailgun always gets a 200.
+- **`ProcessEmailEvent`:**
+  - A bounce marks the address bounced, stops every campaign and logs it.
+  - A spam complaint marks the address complained and unsubscribes the contact.
+  - An unsubscribe unsubscribes the contact.
+  - Only the first open or click of each email is logged, adding 1 or 2 points of score.
+  - Everything can be re-run safely.
+- **`POST /webhooks/mailgun/inbound`:** a Mailgun Route forwards mail sent to the Reply-To address. The sender, the ids in `In-Reply-To`/`References`, the reply text (quoted text removed) and auto-reply signals (`Auto-Submitted`, `Precedence`, "Out of Office" subjects) are passed to `ProcessInboundReply`.
+- **`ProcessInboundReply`:**
+  - The sender's address identifies the contact. The email being replied to is only used when the sender isn't a contact, such as an assistant.
+  - A real reply stops every campaign the contact is in, and moves New or Contacted contacts to Replied. Contacts further along the pipeline keep their stage.
+  - Auto-replies are logged but change nothing.
+  - The same reply delivered twice is recorded once.
 
 ## Phase 8 (optional): Search and Dashboard
 

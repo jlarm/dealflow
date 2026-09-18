@@ -17,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
-        // Mail clients' one-click unsubscribe POSTs carry no CSRF token; the signed URL authenticates them.
-        $middleware->validateCsrfTokens(except: ['unsubscribe/*']);
+        // These POSTs come from mail clients and Mailgun, not the app, so they carry no CSRF token.
+        // Signed URLs authenticate unsubscribes; VerifyMailgunSignature authenticates webhooks.
+        $middleware->validateCsrfTokens(except: ['unsubscribe/*', 'webhooks/*']);
 
         $middleware->web(append: [
             HandleAppearance::class,

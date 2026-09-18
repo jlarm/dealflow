@@ -58,6 +58,29 @@ class EmailEvent extends Model
     }
 
     /**
+     * Find the campaign email a provider event or reply refers to, by DealFlow's
+     * Message-ID or the id the mail provider reported when it accepted the email.
+     *
+     * @param  list<string>  $messageIds
+     */
+    public static function findSent(array $messageIds): ?self
+    {
+        $messageIds = array_values(array_filter(array_map(fn (string $id): string => trim($id, " <>\t\n\r"), $messageIds)));
+
+        if ($messageIds === []) {
+            return null;
+        }
+
+        return self::query()
+            ->where('event_type', EmailEventType::Sent)
+            ->where(fn ($query) => $query
+                ->whereIn('message_id', $messageIds)
+                ->orWhereIn('payload->provider_message_id', $messageIds))
+            ->latest('id')
+            ->first();
+    }
+
+    /**
      * @return BelongsTo<Contact, $this>
      */
     public function contact(): BelongsTo

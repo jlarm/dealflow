@@ -48,3 +48,20 @@ function something()
 {
     // ..
 }
+
+/**
+ * Build Mailgun's signature fields, signed with the configured webhook signing key.
+ *
+ * @return array{timestamp: string, token: string, signature: string}
+ */
+function mailgunSignature(?int $timestamp = null, ?string $token = null): array
+{
+    $timestamp = (string) ($timestamp ?? time());
+    $token ??= bin2hex(random_bytes(16));
+
+    return [
+        'timestamp' => $timestamp,
+        'token' => $token,
+        'signature' => hash_hmac('sha256', $timestamp.$token, (string) config('services.mailgun.webhook_signing_key')),
+    ];
+}

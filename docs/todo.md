@@ -93,12 +93,15 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [ ] Production: set `MAIL_MAILER=mailgun`, Mailgun keys, `MAIL_FROM_ADDRESS` on the sending subdomain, `MAIL_REPLY_TO_ADDRESS`, and run the scheduler (manual)
 
 ## Phase 7: Mailgun Webhooks and Reply Detection
-- [ ] `VerifyMailgunSignature` middleware (HMAC, timestamp freshness, token reuse check)
-- [ ] `POST /webhooks/mailgun/events` (store with dedupe, dispatch job)
-- [ ] `POST /webhooks/mailgun/inbound` (reply matching via `In-Reply-To`)
-- [ ] `ProcessEmailEvent` job (reply / bounce / complaint / unsubscribe / open / click handling)
-- [ ] Mailgun dashboard: webhooks + inbound Route set up (manual)
-- [ ] Feature tests passing
+- [x] `VerifyMailgunSignature` middleware (HMAC, 15-minute freshness, token replay check, fails closed without a key)
+- [x] `POST /webhooks/mailgun/events` (store raw event, dedupe by Mailgun event id, queue processing)
+- [x] Match events to contacts by the `contact_id` variable, then the email's Message-ID, then the recipient
+- [x] `ProcessEmailEvent` job (bounce → bounced + stop campaigns; complaint → unsubscribe; unsubscribe; first open/click logged with a little score)
+- [x] `POST /webhooks/mailgun/inbound` (replies forwarded by a Mailgun Route)
+- [x] `ProcessInboundReply` job (sender's contact first, then the email replied to; stop campaigns, move New/Contacted to Replied; auto-replies logged only; duplicates ignored)
+- [x] Timeline shows replies, auto-replies, bounces, and clicked links
+- [x] Feature tests passing
+- [ ] Mailgun dashboard (manual): webhook URL `https://<app>/webhooks/mailgun/events` for delivered, opened, clicked, permanent failure, complained, and unsubscribed; an inbound Route forwarding the Reply-To address to `https://<app>/webhooks/mailgun/inbound`; `MAILGUN_WEBHOOK_SIGNING_KEY` in `.env`
 
 ## Phase 8 (optional): Search and Dashboard
 - [ ] Scout + Meilisearch on `Contact` (approved)

@@ -504,13 +504,19 @@ function ActivityBody({
             <div className="flex items-center gap-2">
                 <StatusBadge
                     status={statusByValue.get(
-                        activity.payload.from as ContactStatusValue,
+                        payloadString(
+                            activity.payload,
+                            'from',
+                        ) as ContactStatusValue,
                     )}
                 />
                 <span className="text-muted-foreground">→</span>
                 <StatusBadge
                     status={statusByValue.get(
-                        activity.payload.to as ContactStatusValue,
+                        payloadString(
+                            activity.payload,
+                            'to',
+                        ) as ContactStatusValue,
                     )}
                 />
             </div>
@@ -521,7 +527,37 @@ function ActivityBody({
         return <ImportedDetails payload={activity.payload} />;
     }
 
-    const text = activity.payload.body ?? activity.payload.subject;
+    const text =
+        payloadString(activity.payload, 'body') ??
+        payloadString(activity.payload, 'subject');
+    const clickedUrl = httpUrl(payloadString(activity.payload, 'url'));
+
+    if (
+        activity.type === 'email_replied' &&
+        activity.payload.auto_reply === true
+    ) {
+        return (
+            <p className="text-muted-foreground">
+                Automatic reply{text ? `: ${text}` : ''}
+            </p>
+        );
+    }
+
+    if (clickedUrl) {
+        return (
+            <div className="space-y-0.5">
+                {text && <p className="text-foreground/80">{text}</p>}
+                <a
+                    href={clickedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground block truncate text-xs hover:underline"
+                >
+                    {clickedUrl}
+                </a>
+            </div>
+        );
+    }
 
     return text ? (
         <p className="text-foreground/80 break-words whitespace-pre-line">
@@ -532,17 +568,19 @@ function ActivityBody({
 
 function ImportedDetails({ payload }: { payload: Activity['payload'] }) {
     const details = [
-        { label: 'Email status', value: payload.email_status },
-        { label: 'Source', value: payload.source_type },
-        { label: 'Researched', value: payload.research_date },
+        {
+            label: 'Email status',
+            value: payloadString(payload, 'email_status'),
+        },
+        { label: 'Source', value: payloadString(payload, 'source_type') },
+        { label: 'Researched', value: payloadString(payload, 'research_date') },
     ].filter((detail) => detail.value);
-    const sourceUrl = payload.source_url?.match(/^https?:\/\//)
-        ? payload.source_url
-        : null;
+    const sourceUrl = httpUrl(payloadString(payload, 'source_url'));
+    const notes = payloadString(payload, 'notes');
 
     return (
         <div className="text-foreground/80 space-y-1">
-            <p>From “{payload.source_list}”</p>
+            <p>From “{payloadString(payload, 'source_list')}”</p>
             {details.length > 0 && (
                 <p className="text-muted-foreground text-xs">
                     {details
@@ -560,13 +598,30 @@ function ImportedDetails({ payload }: { payload: Activity['payload'] }) {
                     {sourceUrl}
                 </a>
             )}
-            {payload.notes && (
-                <p className="break-words whitespace-pre-line">
-                    {payload.notes}
-                </p>
+            {notes && (
+                <p className="break-words whitespace-pre-line">{notes}</p>
             )}
         </div>
     );
+}
+
+/**
+ * Read a text value from an activity payload.
+ */
+function payloadString(
+    payload: Activity['payload'],
+    key: string,
+): string | undefined {
+    const value = payload[key];
+
+    return typeof value === 'string' ? value : undefined;
+}
+
+/**
+ * Keep a URL only when it is an http(s) link, so it is safe to render as a link.
+ */
+function httpUrl(url: string | undefined): string | null {
+    return url && /^https?:\/\//.test(url) ? url : null;
 }
 
 function TimelineSkeleton() {
