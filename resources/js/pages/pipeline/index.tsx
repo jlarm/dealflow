@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import type {
     Contact,
     ContactStatusValue,
-    SimplePaginated,
+    CursorPaginated,
     StatusOption,
 } from '@/types';
 
@@ -30,27 +30,41 @@ type ColumnKey = `stage_${ContactStatusValue}`;
 type PipelineProps = {
     statuses: StatusOption[];
     counts: Record<ContactStatusValue, number>;
-} & Record<ColumnKey, SimplePaginated<Contact>>;
+} & Record<ColumnKey, CursorPaginated<Contact>>;
 
 const columnKey = (status: ContactStatusValue): ColumnKey => `stage_${status}`;
 
 /**
- * Insert a contact into a column, keeping the server's score-descending order.
+ * Whether contact `a` sorts before contact `b` in the server's order (score, then id, descending).
  */
-function insertByScore(contacts: Contact[], contact: Contact): Contact[] {
-    const position = contacts.findIndex(
-        (existing) =>
-            existing.score < contact.score ||
-            (existing.score === contact.score && existing.id < contact.id),
+function sortsBefore(a: Contact, b: Contact): boolean {
+    return a.score > b.score || (a.score === b.score && a.id > b.id);
+}
+
+/**
+ * Insert a moved contact into a column in the server's order. When the column
+ * has more pages and the contact sorts after every loaded card, it is left out:
+ * it will arrive with a later page, exactly where it belongs.
+ */
+function insertIntoColumn(
+    column: CursorPaginated<Contact>,
+    contact: Contact,
+): Contact[] {
+    const position = column.data.findIndex((existing) =>
+        sortsBefore(contact, existing),
     );
 
-    return position === -1
-        ? [...contacts, contact]
-        : [
-              ...contacts.slice(0, position),
-              contact,
-              ...contacts.slice(position),
-          ];
+    if (position === -1) {
+        return column.meta.next_cursor
+            ? column.data
+            : [...column.data, contact];
+    }
+
+    return [
+        ...column.data.slice(0, position),
+        contact,
+        ...column.data.slice(position),
+    ];
 }
 
 export default function PipelineIndex(props: PipelineProps) {
@@ -81,7 +95,7 @@ export default function PipelineIndex(props: PipelineProps) {
                     },
                     [columnKey(to)]: {
                         ...target,
-                        data: insertByScore(target.data, {
+                        data: insertIntoColumn(target, {
                             ...contact,
                             status: to,
                         }),
@@ -188,7 +202,7 @@ function PipelineColumn({
     onMove,
 }: {
     status: ContactStatusValue;
-    contacts: SimplePaginated<Contact>;
+    contacts: CursorPaginated<Contact>;
     statuses: StatusOption[];
     onDragStart: (contact: Contact) => void;
     onDragEnd: () => void;

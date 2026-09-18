@@ -89,12 +89,11 @@ export type Paginated<T> = {
     };
 };
 
-export type SimplePaginated<T> = {
+export type CursorPaginated<T> = {
     data: T[];
     meta: {
-        current_page: number;
-        from: number | null;
         per_page: number;
-        to: number | null;
+        next_cursor: string | null;
+        prev_cursor: string | null;
     };
 };

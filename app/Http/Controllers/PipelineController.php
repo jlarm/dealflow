@@ -37,6 +37,9 @@ class PipelineController extends Controller
     /**
      * Get the highest-scoring contacts in a stage, one page at a time.
      *
+     * Cursor pagination continues after the last loaded card, so moving cards
+     * between columns never shifts the next page and skips a contact.
+     *
      * @return ScrollProp<mixed>
      */
     private function column(ContactStatus $status): ScrollProp
@@ -47,8 +50,8 @@ class PipelineController extends Controller
                 ->with(['company:id,name', 'tags:id,name'])
                 ->orderByDesc('score')
                 ->orderByDesc('id')
-                ->simplePaginate(self::CONTACTS_PER_COLUMN, pageName: $status->value)
-        ));
+                ->cursorPaginate(self::CONTACTS_PER_COLUMN, cursorName: $status->value)
+        ))->matchOn('data.id');
     }
 
     /**

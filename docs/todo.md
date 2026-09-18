@@ -45,7 +45,7 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 ## Phase 3: Pipeline Kanban
 - [x] `PipelineController@index` (top N per status + grouped counts)
 - [x] Kanban page with a column per status
-- [x] Infinite scroll / load more per column
+- [x] Infinite scroll / load more per column (cursor pagination, so moving cards never skips one)
 - [x] Drag-to-move with optimistic update + rollback
 - [x] "Move to" menu on each card (keyboard and touch alternative to dragging)
 - [x] Pipeline added to the top bar nav
