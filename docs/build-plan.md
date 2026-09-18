@@ -11,7 +11,7 @@ Implementation plan for `docs/crm-data-model.md` and `docs/dealflow-overview.md`
 | 3 | Live import progress | Inertia v3 polling (`usePoll`). Add Reverb later only if polling isn't good enough. |
 | 4 | Search | Indexed database filters first. Scout + Meilisearch is optional, in Phase 8. |
 | 5 | Email provider | **Mailgun.** It's already in use, and Postmark doesn't allow cold or unsolicited outreach. |
-| 6 | Enrichment | **No third-party enrichment API.** Contact lists are researched dealer lists (partly sourced from Apollo), so the data comes in through the CSV instead. Phase 5 makes the importer understand that format. An email verification service (ZeroBounce, NeverBounce) can be added later if unverified addresses turn out to matter. |
+| 6 | Enrichment | **No third-party enrichment API.** Contact lists are Apollo exports and researched dealer lists, so the data comes in through the CSV instead. Phase 5 makes the importer understand that format. An email verification service (ZeroBounce, NeverBounce) can be added later if unverified addresses turn out to matter. |
 
 **New dependencies:** Phase 6 needs `symfony/mailgun-mailer` and `symfony/http-client` for Laravel's `mailgun` transport. Nothing else is added unless Phase 8 is approved.
 
@@ -103,10 +103,14 @@ Implementation plan for `docs/crm-data-model.md` and `docs/dealflow-overview.md`
 
 ## Phase 5: Dealer List Import
 
-The contact lists are researched dealer lists with these columns: State, City, Dealership / Group, Contact Name, Title, Public Email, Email Status, Source Type, Source URL, Research Date, Notes. Phase 5 makes the importer handle that format fully, instead of calling an enrichment API.
+Contact lists come in two formats, and the importer needs to handle both fully instead of calling an enrichment API:
+
+- **Researched dealer lists:** State, City, Dealership / Group, Contact Name, Title, Public Email, Email Status, Source Type, Source URL, Research Date, Notes.
+- **Apollo exports:** First Name, Last Name, Title, Company Name, Company Name for Emails, Email, Email Status, Primary Email Source, Primary Email Verification Source, Email Confidence, Primary Email Catch-all Status, Primary Email Last Verified At, Seniority, Departments, Sub Departments, and more columns still to be confirmed (phones, employees, industry, LinkedIn, website, location).
 
 - **Column aliases:** "Dealership / Group" maps to company and "Public Email" maps to email. "Contact Name" and "Title" already map.
-- **Email Status:** mapped to `email_status`. The exact values in the lists need confirming before the mapping is written (for example "Verified" → valid, "Unverified" → risky).
+- **Email Status:** mapped to `email_status`. The exact values in both formats need confirming before the mapping is written. For Apollo, Email Status and Catch-all Status are combined: a verified address on a catch-all domain is risky, not valid.
+- **Apollo columns:** alias the Apollo phone, employee, LinkedIn and website columns. Seniority and Departments are kept for targeting, either as contact fields or as tags (to decide).
 - **Dealership location:**
   - Add `city` and `state` columns to `companies` and fill them from the list.
   - With no website column, companies without a domain are matched by name and state, so two dealerships with the same name in different states stay separate.
@@ -176,7 +180,7 @@ Pest feature tests per phase, using factory states:
 
 - **Status changes**: the status-change action writes an activity, and invalid transitions are rejected.
 - **Imports**: `Storage::fake` + `Bus::assertBatched`. The chunk job gets a fixture CSV with duplicates and bad rows, and the tests assert on de-duplication and `import_failures`.
-- **Dealer lists**: a fixture with the real dealer-list header row, covering email status mapping, company matching by name and state, and the Imported timeline entry.
+- **Contact lists**: fixtures with the real dealer-list and Apollo header rows, covering email status mapping, company matching by name and state, and the Imported timeline entry.
 - **Sending**: `Mail::fake`. Unsubscribed contacts are skipped, the step advances, and a retry doesn't send twice.
 - **Webhooks**:
   - A bad or stale signature is rejected, and a reused token is rejected.

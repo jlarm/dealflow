@@ -62,15 +62,18 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Feature tests passing (fixture CSV with duplicates and bad rows)
 
 ## Phase 5: Dealer List Import
-- [ ] Confirm the values used in the Email Status column (and Source Type) with a sample
+- [ ] Get the full Apollo export header row (columns after Sub Departments)
+- [ ] Confirm Email Status values for both formats, Apollo Catch-all Status values, and dealer-list Source Type values
+- [ ] Apollo column aliases (phones, employees, industry, LinkedIn, website, location)
+- [ ] Seniority / Departments: contact fields or tags (decide)
 - [ ] Column aliases: "Dealership / Group" → company, "Public Email" → email
-- [ ] Map Email Status → `email_status`
+- [ ] Map Email Status (+ Apollo Catch-all Status) → `email_status`
 - [ ] `city` and `state` on companies, filled from the list
 - [ ] Match domain-less companies by name + state
 - [ ] `ActivityType::Imported` timeline entry with source list, Source Type, Source URL, Research Date, Notes
 - [ ] Decide the sending rule for unverified emails (`contactable()` scope)
 - [ ] Show city/state on companies and contacts; filter contacts by state
-- [ ] Tests with a fixture using the real dealer-list header row
+- [ ] Tests with fixtures using the real dealer-list and Apollo header rows
 
 ## Phase 6: Campaigns and Sending (Mailgun)
 - [ ] Install `symfony/mailgun-mailer` + `symfony/http-client` (approved)
