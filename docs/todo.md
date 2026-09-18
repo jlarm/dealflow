@@ -8,18 +8,19 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [ ] Sidebar nav: each item is added in the phase that creates its routes (Contacts/Companies in 2, Pipeline in 3, Imports in 4, Campaigns in 6)
 
 ## Phase 1: Schema, Models, Factories
-- [ ] `companies` migration, model, factory (`enriched()` state)
-- [ ] `contacts` migration, model, factory (`withStatus()`, `unsubscribed()` states)
-- [ ] `tags` + `contact_tag` migrations, model, factory
-- [ ] `campaigns` migration, model, factory
-- [ ] `campaign_steps` migration, model, factory
-- [ ] `campaign_contact` migration + `CampaignEnrollment` pivot model
-- [ ] `activities` migration, model, factory (no `updated_at`)
-- [ ] `email_events` migration, model, factory
-- [ ] `imports` + `import_failures` migrations, models, factories
-- [ ] Relationships, casts, `#[Fillable]`, scopes (`withStatus`, `contactable`, `dueForSend`)
-- [ ] Seeder: ~500 contacts across ~50 companies
-- [ ] Model tests passing
+- [x] `companies` migration, model, factory (`enriched()` state)
+- [x] `contacts` migration, model, factory (`withStatus()`, `unsubscribed()` states)
+- [x] `tags` + `contact_tag` migrations, model, factory
+- [x] `campaigns` migration, model, factory
+- [x] `campaign_steps` migration, model, factory
+- [x] `campaign_contact` migration + `CampaignEnrollment` pivot model
+- [x] `activities` migration, model, factory (no `updated_at`)
+- [x] `email_events` migration, model, factory
+- [x] `imports` + `import_failures` migrations, models, factories
+- [x] Relationships, casts, `#[Fillable]`, scopes (`withStatus`, `contactable`, `dueForSend`)
+- [x] Seeder: ~500 contacts across ~50 companies (`CrmSeeder`)
+- [x] `EmailStatus` enum (deliverability) + `withEmailStatus()` / `withoutEmail()` contact states
+- [x] Model tests passing
 
 ## Phase 2: Contacts, Companies, Tags, Timeline
 - [ ] `ChangeContactStatus` action (status change + activity in one transaction)
