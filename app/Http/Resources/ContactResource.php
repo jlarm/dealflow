@@ -28,6 +28,8 @@ class ContactResource extends JsonResource
             'email_status' => $this->email_status?->value,
             'phone' => $this->phone,
             'title' => $this->title,
+            'seniority' => $this->seniority,
+            'departments' => $this->departments,
             'linkedin_url' => $this->linkedin_url,
             'source_list' => $this->source_list,
             'status' => $this->status->value,
@@ -38,6 +40,8 @@ class ContactResource extends JsonResource
             'company' => $this->whenLoaded('company', fn (): ?array => $this->company === null ? null : [
                 'id' => $this->company->id,
                 'name' => $this->company->name,
+                'city' => $this->company->city,
+                'state' => $this->company->state,
             ]),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
         ];

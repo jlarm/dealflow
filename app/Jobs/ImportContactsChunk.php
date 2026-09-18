@@ -2,6 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Actions\Activities\LogActivity;
+use App\Enums\ActivityType;
+use App\Enums\EmailStatus;
 use App\Models\Contact;
 use App\Models\Import;
 use Illuminate\Bus\Batchable;
@@ -40,7 +43,17 @@ class ImportContactsChunk implements ShouldQueue
      *
      * @var list<string>
      */
-    private const array CONTACT_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'title', 'linkedin_url', 'company_id'];
+    private const array CONTACT_FIELDS = [
+        'first_name', 'last_name', 'email', 'email_status', 'phone', 'title',
+        'seniority', 'departments', 'linkedin_url', 'apollo_contact_id',
+    ];
+
+    /**
+     * The research details recorded on the contact's "Imported" timeline entry.
+     *
+     * @var list<string>
+     */
+    private const array RESEARCH_FIELDS = ['source_type', 'source_url', 'research_date', 'notes'];
 
     /**
      * @param  list<ImportRow>  $rows
@@ -55,9 +68,9 @@ class ImportContactsChunk implements ShouldQueue
         return [new SkipIfBatchCancelled];
     }
 
-    public function handle(): void
+    public function handle(LogActivity $logActivity): void
     {
-        DB::transaction(function (): void {
+        DB::transaction(function () use ($logActivity): void {
             $failures = [];
 
             foreach ($this->rows as $row) {
@@ -75,7 +88,13 @@ class ImportContactsChunk implements ShouldQueue
                     continue;
                 }
 
-                $this->saveContact($row['data']);
+                $contact = $this->saveContact($row);
+
+                if ($row['tag_ids'] !== []) {
+                    $contact->tags()->syncWithoutDetaching($row['tag_ids']);
+                }
+
+                $logActivity->handle($contact, ActivityType::Imported, $this->importedPayload($row), $this->import->user);
             }
 
             if ($failures !== []) {
@@ -90,42 +109,92 @@ class ImportContactsChunk implements ShouldQueue
     }
 
     /**
-     * Create the contact, or fill in the blanks on an existing contact with the same email.
-     * Existing values, pipeline status, and source list are never overwritten.
+     * Create the contact, or fill in the blanks on an existing one matched by email or Apollo contact id.
+     * Existing values, pipeline stage, and source list are never overwritten, except that a
+     * bounced or invalid email status always replaces a better one, to protect deliverability.
      *
-     * @param  array<string, int|string|null>  $data
+     * @param  ImportRow  $row
      */
-    private function saveContact(array $data): void
+    private function saveContact(array $row): Contact
     {
         $attributes = array_filter(
-            array_intersect_key($data, array_flip(self::CONTACT_FIELDS)),
+            [...array_intersect_key($row['data'], array_flip(self::CONTACT_FIELDS)), 'company_id' => $row['company_id']],
             fn (int|string|null $value): bool => $value !== null,
         );
 
-        if (! isset($attributes['email'])) {
-            Contact::create([...$attributes, 'source_list' => $this->import->source_list]);
+        $contact = $this->existingContact($attributes);
 
-            return;
+        if ($contact === null) {
+            return $this->createContact($attributes);
         }
 
-        $contact = Contact::createOrFirst(
-            ['email' => $attributes['email']],
-            [...$attributes, 'source_list' => $this->import->source_list],
-        );
-
-        if ($contact->wasRecentlyCreated) {
-            return;
-        }
-
-        $blanks = array_filter(
+        $updates = array_filter(
             $attributes,
-            fn (int|string $value, string $field): bool => $contact->getAttribute($field) === null,
+            fn (int|string $value, string $field): bool => $contact->getAttribute($field) === null
+                && ($field !== 'apollo_contact_id' || ! Contact::where('apollo_contact_id', $value)->exists()),
             ARRAY_FILTER_USE_BOTH,
         );
 
-        if ($blanks !== []) {
-            $contact->update($blanks);
+        $status = EmailStatus::tryFrom((string) ($attributes['email_status'] ?? ''));
+
+        if ($status !== null && ! $status->isSendable()) {
+            $updates['email_status'] = $status;
         }
+
+        if ($updates !== []) {
+            $contact->update($updates);
+        }
+
+        return $contact;
+    }
+
+    /**
+     * @param  array<string, int|string>  $attributes
+     */
+    private function existingContact(array $attributes): ?Contact
+    {
+        if (isset($attributes['email'])) {
+            return Contact::firstWhere('email', $attributes['email']);
+        }
+
+        if (isset($attributes['apollo_contact_id'])) {
+            return Contact::firstWhere('apollo_contact_id', $attributes['apollo_contact_id']);
+        }
+
+        return null;
+    }
+
+    /**
+     * Create a contact. createOrFirst uses the unique email index, so two chunks importing
+     * the same email at once end up with one contact.
+     *
+     * @param  array<string, int|string>  $attributes
+     */
+    private function createContact(array $attributes): Contact
+    {
+        if (isset($attributes['apollo_contact_id']) && Contact::where('apollo_contact_id', $attributes['apollo_contact_id'])->exists()) {
+            unset($attributes['apollo_contact_id']);
+        }
+
+        $attributes['source_list'] = $this->import->source_list;
+
+        return isset($attributes['email'])
+            ? Contact::createOrFirst(['email' => $attributes['email']], $attributes)
+            : Contact::create($attributes);
+    }
+
+    /**
+     * @param  ImportRow  $row
+     * @return array<string, int|string>
+     */
+    private function importedPayload(array $row): array
+    {
+        return array_filter([
+            'import_id' => $this->import->id,
+            'source_list' => $this->import->source_list,
+            'email_status' => $row['data']['list_email_status'] ?? null,
+            ...array_intersect_key($row['data'], array_flip(self::RESEARCH_FIELDS)),
+        ], fn (int|string|null $value): bool => $value !== null && $value !== '');
     }
 
     /**
@@ -139,7 +208,10 @@ class ImportContactsChunk implements ShouldQueue
             'email' => ['nullable', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'title' => ['nullable', 'string', 'max:255'],
+            'seniority' => ['nullable', 'string', 'max:255'],
+            'departments' => ['nullable', 'string', 'max:2000'],
             'linkedin_url' => ['nullable', 'url', 'max:255'],
+            'apollo_contact_id' => ['nullable', 'string', 'max:255'],
         ];
     }
 

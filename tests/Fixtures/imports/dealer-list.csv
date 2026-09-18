@@ -1,0 +1,5 @@
+State,City,Dealership / Group,Contact Name,Title,Public Email,Email Status,Source Type,Source URL,Research Date,Notes
+TX,Austin,Capitol Honda,Maria Lopez,General Manager,maria@capitolhonda.com,Verified,Dealer website,https://capitolhonda.com/staff,2026-09-01,Prefers morning calls
+OK,Tulsa,Main Street Motors,Alan Reyes,Owner,alan.reyes@gmail.com,Unverified,LinkedIn,javascript:alert(1),2026-09-02,
+TX,Dallas,Main Street Motors,Beth Cho,Sales Manager,,,Google,https://example.com/main-street,2026-09-03,No public email found
+TX,Dallas,Main Street Motors,Carl Diaz,Service Manager,carl.diaz@yahoo.com,Verified,Dealer website,,2026-09-03,

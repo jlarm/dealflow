@@ -25,11 +25,18 @@ describe('store', function () {
         $response = $this->actingAs(User::factory()->create())->post(route('companies.store'), [
             'name' => 'Acme Motors',
             'domain' => 'https://www.Acme-Motors.com/about',
+            'city' => 'Austin',
+            'state' => 'texas',
+            'phone' => '512-555-0100',
         ]);
 
         $company = Company::sole();
         $response->assertRedirect(route('companies.show', $company));
-        expect($company->domain)->toBe('acme-motors.com');
+        expect($company)
+            ->domain->toBe('acme-motors.com')
+            ->city->toBe('Austin')
+            ->state->toBe('TX')
+            ->phone->toBe('512-555-0100');
     });
 
     test('rejects a domain already used by another company once normalized', function () {
@@ -56,6 +63,22 @@ describe('store', function () {
 });
 
 describe('show', function () {
+    test('shows the imported company details that have values', function () {
+        $company = Company::factory()->create(['enrichment_data' => [
+            'number_of_retail_locations' => '3',
+            'keywords' => 'new cars, used cars',
+            'technologies' => '',
+            'sic_codes' => '5511',
+        ]]);
+
+        $response = $this->actingAs(User::factory()->create())->get(route('companies.show', $company));
+
+        $response->assertInertia(fn (Assert $page) => $page->where('details', [
+            ['label' => 'Retail locations', 'value' => '3'],
+            ['label' => 'Keywords', 'value' => 'new cars, used cars'],
+        ])->etc());
+    });
+
     test('renders the company with only its own contacts', function () {
         $company = Company::factory()->create();
         $contact = Contact::factory()->for($company)->create();

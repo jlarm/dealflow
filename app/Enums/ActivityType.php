@@ -16,6 +16,7 @@ enum ActivityType: string
     case Note = 'note';
     case Call = 'call';
     case StatusChange = 'status_change';
+    case Imported = 'imported';
 
     /**
      * Get the human-readable label for the activity type.
@@ -32,6 +33,7 @@ enum ActivityType: string
             self::Note => 'Note',
             self::Call => 'Call',
             self::StatusChange => 'Status Change',
+            self::Imported => 'Imported',
         };
     }
 

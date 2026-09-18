@@ -31,6 +31,8 @@ trait ContactValidationRules
             ],
             'phone' => ['nullable', 'string', 'max:50'],
             'title' => ['nullable', 'string', 'max:255'],
+            'seniority' => ['nullable', 'string', 'max:255'],
+            'departments' => ['nullable', 'string', 'max:2000'],
             'linkedin_url' => ['nullable', 'url', 'max:255'],
             'source_list' => ['nullable', 'string', 'max:255'],
             'score' => ['required', 'integer', 'min:0', 'max:100'],

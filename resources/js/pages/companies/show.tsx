@@ -14,13 +14,16 @@ import ConfirmDelete from '@/components/confirm-delete';
 import Pagination from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Company, Contact, Paginated } from '@/types';
+import { formatLocation } from '@/lib/location';
+import type { Company, CompanyDetail, Contact, Paginated } from '@/types';
 
 export default function CompaniesShow({
     company,
+    details,
     contacts,
 }: {
     company: Company;
+    details: CompanyDetail[];
     contacts: Paginated<Contact>;
 }) {
     setLayoutProps({
@@ -30,9 +33,11 @@ export default function CompaniesShow({
         ],
     });
 
-    const details = [
+    const summary = [
+        formatLocation(company.city, company.state),
         company.industry,
         company.size && `${company.size} employees`,
+        company.phone,
     ].filter(Boolean);
 
     return (
@@ -62,8 +67,8 @@ export default function CompaniesShow({
                                     {company.domain}
                                 </a>
                             )}
-                            {details.length > 0 && (
-                                <span>{details.join(' · ')}</span>
+                            {summary.length > 0 && (
+                                <span>{summary.join(' · ')}</span>
                             )}
                         </div>
                     </div>
@@ -101,6 +106,19 @@ export default function CompaniesShow({
                         />
                     </div>
                 </div>
+
+                {details.length > 0 && (
+                    <dl className="grid gap-x-6 gap-y-3 rounded-xl border p-4 text-sm sm:grid-cols-2">
+                        {details.map((detail) => (
+                            <div key={detail.label} className="min-w-0">
+                                <dt className="text-muted-foreground text-xs">
+                                    {detail.label}
+                                </dt>
+                                <dd className="break-words">{detail.value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                )}
 
                 <div className="overflow-x-auto rounded-xl border">
                     <table className="w-full text-sm">

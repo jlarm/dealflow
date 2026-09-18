@@ -36,8 +36,9 @@ class ImportController extends Controller
     {
         return Inertia::render('imports/create', [
             'expectedColumns' => [
-                'Email', 'First name', 'Last name', 'Name', 'Phone', 'Title',
-                'Company', 'Website', 'LinkedIn', 'Industry', 'Employees',
+                'Email', 'First name', 'Last name', 'Name', 'Title', 'Phone', 'Email Status',
+                'Company', 'Website', 'City', 'State', 'Industry', 'Employees', 'LinkedIn',
+                'Seniority', 'Departments', 'Lists', 'Source Type', 'Source URL', 'Research Date', 'Notes',
             ],
         ]);
     }

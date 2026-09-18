@@ -18,12 +18,16 @@ use Illuminate\Support\Str;
  * @property string|null $domain
  * @property string|null $industry
  * @property string|null $size
+ * @property string|null $city
+ * @property string|null $state
+ * @property string|null $phone
+ * @property string|null $apollo_account_id
  * @property array<string, mixed>|null $enrichment_data
  * @property Carbon|null $enriched_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'domain', 'industry', 'size', 'enrichment_data', 'enriched_at'])]
+#[Fillable(['name', 'domain', 'industry', 'size', 'city', 'state', 'phone', 'apollo_account_id', 'enrichment_data', 'enriched_at'])]
 class Company extends Model
 {
     /** @use HasFactory<CompanyFactory> */

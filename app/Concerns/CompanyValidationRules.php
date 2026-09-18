@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\UsState;
 use App\Models\Company;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
@@ -28,6 +29,9 @@ trait CompanyValidationRules
             ],
             'industry' => ['nullable', 'string', 'max:255'],
             'size' => ['nullable', 'string', 'max:50'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -44,12 +48,16 @@ trait CompanyValidationRules
     }
 
     /**
-     * Normalize a website URL to a bare domain before it is validated for uniqueness.
+     * Normalize a website URL to a bare domain, and a state name to its code, before validation.
      */
     protected function prepareForValidation(): void
     {
         if ($this->filled('domain')) {
             $this->merge(['domain' => Company::normalizeDomain($this->string('domain')->value())]);
+        }
+
+        if ($this->filled('state')) {
+            $this->merge(['state' => UsState::normalize($this->string('state')->value())]);
         }
     }
 }

@@ -25,8 +25,11 @@ use Illuminate\Support\Str;
  * @property EmailStatus|null $email_status
  * @property string|null $phone
  * @property string|null $title
+ * @property string|null $seniority
+ * @property string|null $departments
  * @property string|null $linkedin_url
  * @property string|null $source_list
+ * @property string|null $apollo_contact_id
  * @property ContactStatus $status
  * @property int $score
  * @property Carbon|null $last_contacted_at
@@ -42,8 +45,11 @@ use Illuminate\Support\Str;
     'email_status',
     'phone',
     'title',
+    'seniority',
+    'departments',
     'linkedin_url',
     'source_list',
+    'apollo_contact_id',
     'status',
     'score',
     'last_contacted_at',

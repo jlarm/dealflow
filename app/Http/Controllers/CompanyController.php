@@ -70,8 +70,39 @@ class CompanyController extends Controller
 
         return Inertia::render('companies/show', [
             'company' => new CompanyResource($company->loadCount('contacts')),
+            'details' => $this->details($company),
             'contacts' => ContactResource::collection($contacts),
         ]);
+    }
+
+    /**
+     * Get the imported company data worth showing, as label and value pairs.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    private function details(Company $company): array
+    {
+        $labels = [
+            'number_of_retail_locations' => 'Retail locations',
+            'annual_revenue' => 'Annual revenue',
+            'technologies' => 'Technologies',
+            'keywords' => 'Keywords',
+            'parent_company_apollo_data' => 'Parent company',
+            'company_address' => 'Address',
+            'company_linkedin_url' => 'LinkedIn',
+        ];
+
+        $details = [];
+
+        foreach ($labels as $key => $label) {
+            $value = $company->enrichment_data[$key] ?? null;
+
+            if (is_string($value) && $value !== '') {
+                $details[] = ['label' => $label, 'value' => $value];
+            }
+        }
+
+        return $details;
     }
 
     /**

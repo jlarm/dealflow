@@ -47,7 +47,7 @@ class PipelineController extends Controller
         return Inertia::scroll(fn () => ContactResource::collection(
             Contact::query()
                 ->withStatus($status)
-                ->with(['company:id,name', 'tags:id,name'])
+                ->with(['company:id,name,city,state', 'tags:id,name'])
                 ->orderByDesc('score')
                 ->orderByDesc('id')
                 ->cursorPaginate(self::CONTACTS_PER_COLUMN, cursorName: $status->value)

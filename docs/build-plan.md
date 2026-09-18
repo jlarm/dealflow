@@ -110,14 +110,23 @@ Contact lists come in two formats, and the importer needs to handle both fully i
 
 - **Column aliases:** "Dealership / Group" maps to company and "Public Email" maps to email. "Contact Name" and "Title" already map.
 - **Email Status:** mapped to `email_status`. The exact values in both formats need confirming before the mapping is written. For Apollo, Email Status and Catch-all Status are combined: a verified address on a catch-all domain is risky, not valid.
-- **Apollo columns:** alias the Apollo phone, employee, LinkedIn and website columns. Seniority and Departments are kept for targeting, either as contact fields or as tags (to decide).
+- **Apollo columns:**
+  - **Phones:** the first filled of Work Direct, Mobile, Corporate, Other and Home becomes the contact's phone. Company Phone goes on the company.
+  - **Location:** Company City and Company State are the dealership's location. They share the company `city` and `state` fields with the dealer lists' City and State.
+  - **Company data:** Keywords, Technologies, Annual Revenue, funding, SIC/NAICS codes, Number of Retail Locations, Company LinkedIn and Parent company are stored raw in `companies.enrichment_data`.
+  - **Ids:** Apollo Contact Id and Apollo Account Id are stored, so people and companies can be matched again without an email or website.
+  - **Seniority and Departments** become contact fields that can be filtered.
+  - **Lists** becomes tags.
+  - **Email Bounced** marks the contact bounced.
+  - **Ignored:** Stage, Replied and Last Contacted. DealFlow tracks the pipeline itself.
+- **States:** stored as two-letter codes. Apollo writes full names ("Texas") and the dealer lists use codes ("TX"), so both are normalized to codes, including in the company form.
 - **Dealership location:**
   - Add `city` and `state` columns to `companies` and fill them from the list.
   - With no website column, companies without a domain are matched by name and state, so two dealerships with the same name in different states stay separate.
   - A domain is still taken from a work email address when there is one.
 - **Research details:** each imported contact gets an "Imported" timeline entry, a new `ActivityType::Imported`. It holds the source list, Source Type, Source URL, Research Date and Notes, so you can see where a lead came from and what was known about them.
 - **Existing contacts:** matching by email stays as it is, and only blank fields are filled in. A contact already in the database still gets an "Imported" entry when a new list contains them, so the timeline shows every list they appeared in.
-- **Sending rule:** decide whether campaigns send only to verified emails or to unverified ones too. This goes into the `contactable()` scope used by Phase 6.
+- **Sending rule (decided): verified only.** Phase 6 changes the `contactable()` scope so campaigns only email addresses whose status is valid (verified and not catch-all).
 - **UI:** show city and state on company pages and in the contact list, and let contacts be filtered by state.
 
 ## Phase 6: Campaigns and Sending (Mailgun)

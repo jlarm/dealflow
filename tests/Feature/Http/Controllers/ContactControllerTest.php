@@ -47,6 +47,21 @@ describe('index', function () {
             ->where('contacts.data.0.id', $match->id));
     });
 
+    test('filters by dealership state and seniority', function () {
+        $texasOwner = Contact::factory()->for(Company::factory()->state(['state' => 'TX']))->create(['seniority' => 'owner']);
+        Contact::factory()->for(Company::factory()->state(['state' => 'TX']))->create(['seniority' => 'manager']);
+        Contact::factory()->for(Company::factory()->state(['state' => 'OK']))->create(['seniority' => 'owner']);
+
+        $response = $this->actingAs(User::factory()->create())->get(route('contacts.index', ['state' => 'TX', 'seniority' => 'owner']));
+
+        $response->assertInertia(fn (Assert $page) => $page
+            ->has('contacts.data', 1)
+            ->where('contacts.data.0.id', $texasOwner->id)
+            ->where('contacts.data.0.company.state', 'TX')
+            ->where('states', ['OK', 'TX'])
+            ->where('seniorities', ['manager', 'owner']));
+    });
+
     test('sorts by name in the requested direction', function () {
         Contact::factory()->create(['first_name' => 'Ann', 'last_name' => 'Young']);
         Contact::factory()->create(['first_name' => 'Ben', 'last_name' => 'Adams']);
@@ -78,6 +93,8 @@ describe('store', function () {
             'last_name' => 'Doe',
             'email' => '  Jane.Doe@Example.COM ',
             'company_id' => $company->id,
+            'seniority' => 'owner',
+            'departments' => 'Sales, Operations',
             'score' => 40,
         ]);
 
@@ -87,6 +104,8 @@ describe('store', function () {
         expect($contact)
             ->email->toBe('jane.doe@example.com')
             ->company_id->toBe($company->id)
+            ->seniority->toBe('owner')
+            ->departments->toBe('Sales, Operations')
             ->status->toBe(ContactStatus::New);
     });
 

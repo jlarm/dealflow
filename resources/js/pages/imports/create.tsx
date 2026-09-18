@@ -31,8 +31,9 @@ export default function ImportsCreate({
 
                 <div className="space-y-2 text-sm">
                     <p className="text-muted-foreground">
-                        Recognised columns (the header row can use common
-                        variations like “Email Address” or “Company Name”):
+                        Apollo exports and dealer research lists both work
+                        as-is. Recognised columns (common variations like
+                        “Public Email” or “Dealership / Group” work too):
                     </p>
                     <div className="flex flex-wrap gap-1">
                         {expectedColumns.map((column) => (

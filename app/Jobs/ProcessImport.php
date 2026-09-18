@@ -2,9 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Enums\EmailStatus;
+use App\Enums\UsState;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\Import;
+use App\Models\Tag;
 use Illuminate\Bus\Batch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -15,13 +18,14 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Streams an uploaded CSV, maps its columns, resolves companies, and queues
- * the rows as a batch of ImportContactsChunk jobs.
+ * Streams an uploaded CSV, maps its columns, resolves companies and tags, and
+ * queues the rows as a batch of ImportContactsChunk jobs.
  *
- * Companies are resolved here, in a single job, so parallel chunk jobs never
- * race to create the same company.
+ * Understands Apollo exports and researched dealer lists. Companies and tags
+ * are resolved here, in a single job, so parallel chunk jobs never race to
+ * create the same company or tag.
  *
- * @phpstan-type ImportRow array{row_number: int, raw: array<string, string|null>, data: array<string, int|string|null>}
+ * @phpstan-type ImportRow array{row_number: int, raw: array<string, string|null>, data: array<string, string|null>, company_id: int|null, tag_ids: list<int>}
  */
 class ProcessImport implements ShouldQueue
 {
@@ -43,7 +47,8 @@ class ProcessImport implements ShouldQueue
     public int $timeout = 80;
 
     /**
-     * Recognised header names for each contact field, after normalization.
+     * Recognised header names for each field, after normalization. When several
+     * columns match a field, the first one with a value wins, in the order listed.
      *
      * @var array<string, list<string>>
      */
@@ -51,14 +56,41 @@ class ProcessImport implements ShouldQueue
         'first_name' => ['first_name', 'firstname', 'first', 'given_name'],
         'last_name' => ['last_name', 'lastname', 'last', 'surname', 'family_name'],
         'name' => ['name', 'full_name', 'contact_name', 'contact'],
-        'email' => ['email', 'email_address', 'e_mail', 'work_email', 'business_email'],
-        'phone' => ['phone', 'phone_number', 'mobile', 'mobile_phone', 'work_phone', 'direct_phone'],
+        'email' => ['email', 'email_address', 'e_mail', 'work_email', 'business_email', 'public_email'],
+        'email_status' => ['email_status'],
+        'email_catch_all' => ['primary_email_catch_all_status', 'email_catch_all_status', 'catch_all_status', 'catch_all'],
+        'email_bounced' => ['email_bounced', 'bounced'],
+        'phone' => ['work_direct_phone', 'direct_phone', 'mobile_phone', 'mobile', 'phone', 'phone_number', 'work_phone', 'corporate_phone', 'other_phone', 'home_phone'],
         'title' => ['title', 'job_title', 'position', 'role'],
-        'company' => ['company', 'company_name', 'organization', 'organisation', 'account', 'account_name', 'dealership', 'dealer', 'dealer_name'],
-        'domain' => ['domain', 'website', 'company_website', 'company_domain', 'url', 'web'],
-        'linkedin_url' => ['linkedin', 'linkedin_url', 'person_linkedin_url', 'linkedin_profile'],
+        'seniority' => ['seniority'],
+        'departments' => ['departments', 'department'],
+        'linkedin_url' => ['person_linkedin_url', 'linkedin', 'linkedin_url', 'linkedin_profile'],
+        'apollo_contact_id' => ['apollo_contact_id'],
+        'company' => ['company', 'company_name', 'organization', 'organisation', 'account', 'account_name', 'dealership_group', 'dealership', 'dealer', 'dealer_name'],
+        'domain' => ['website', 'domain', 'company_website', 'company_domain', 'url', 'web'],
         'industry' => ['industry'],
-        'size' => ['size', 'company_size', 'employees', 'employee_count', 'number_of_employees', 'headcount'],
+        'size' => ['employees', 'size', 'company_size', 'employee_count', 'number_of_employees', 'headcount'],
+        'city' => ['company_city', 'city'],
+        'state' => ['company_state', 'state'],
+        'company_phone' => ['company_phone'],
+        'apollo_account_id' => ['apollo_account_id'],
+        'lists' => ['lists'],
+        'source_type' => ['source_type'],
+        'source_url' => ['source_url'],
+        'research_date' => ['research_date'],
+        'notes' => ['notes', 'note'],
+    ];
+
+    /**
+     * Apollo company columns kept as raw enrichment data on the company.
+     *
+     * @var list<string>
+     */
+    public const array COMPANY_DETAIL_COLUMNS = [
+        'keywords', 'technologies', 'annual_revenue', 'total_funding', 'latest_funding',
+        'latest_funding_amount', 'last_raised_at', 'number_of_retail_locations', 'sic_codes',
+        'naics_codes', 'company_linkedin_url', 'company_address', 'company_country',
+        'parent_company_apollo_data', 'facebook_url', 'twitter_url',
     ];
 
     /**
@@ -70,6 +102,20 @@ class ProcessImport implements ShouldQueue
         'gmail.com', 'googlemail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
         'aol.com', 'icloud.com', 'me.com', 'msn.com', 'proton.me', 'protonmail.com', 'comcast.net',
     ];
+
+    /**
+     * Company ids already resolved in this run, keyed by "account:", "domain:", or "name:" lookups.
+     *
+     * @var array<string, int>
+     */
+    private array $companyIds = [];
+
+    /**
+     * Tag ids already resolved in this run, keyed by lowercase tag name.
+     *
+     * @var array<string, int>
+     */
+    private array $tagIds = [];
 
     public function __construct(public Import $import) {}
 
@@ -94,13 +140,16 @@ class ProcessImport implements ShouldQueue
     {
         $rows = $this->readCsv();
         $header = $rows->first() ?? [];
-        $columns = $this->mapColumns($header);
+        $normalizedHeader = array_map($this->normalizeHeader(...), $header);
+        $columns = $this->mapColumns($normalizedHeader);
 
         if (! array_intersect(['email', 'first_name', 'last_name', 'name'], array_keys($columns))) {
             $this->import->fail(__('The file needs a header row with an email or name column.'));
 
             return;
         }
+
+        $detailColumns = array_intersect($normalizedHeader, self::COMPANY_DETAIL_COLUMNS);
 
         $jobs = [];
         $rowCount = 0;
@@ -110,11 +159,12 @@ class ProcessImport implements ShouldQueue
                 'row_number' => $index + 1,
                 'raw' => $this->combine($header, $values),
                 'data' => $this->normalize($columns, $values),
+                'details' => $this->companyDetails($detailColumns, $values),
             ])
             ->reject(fn (array $row): bool => array_filter($row['data']) === [])
             ->chunk(self::ROWS_PER_CHUNK)
             ->each(function (LazyCollection $chunk) use (&$jobs, &$rowCount): void {
-                $rows = $this->resolveCompanies(array_values($chunk->all()));
+                $rows = array_values($chunk->map(fn (array $row): array => $this->resolveRelations($row))->all());
                 $rowCount += count($rows);
                 $jobs[] = new ImportContactsChunk($this->import, $rows);
             });
@@ -169,26 +219,32 @@ class ProcessImport implements ShouldQueue
     }
 
     /**
-     * Map each recognised header to its column position.
-     *
-     * @param  list<string|null>  $header
-     * @return array<string, int>
+     * Turn a header like "# Employees" or "Dealership / Group" into "employees" or "dealership_group".
      */
-    private function mapColumns(array $header): array
+    private function normalizeHeader(?string $name): string
+    {
+        return Str::of((string) $name)
+            ->replaceStart("\u{FEFF}", '')
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->value();
+    }
+
+    /**
+     * Map each field to the positions of its matching columns, in alias priority order.
+     *
+     * @param  list<string>  $normalizedHeader
+     * @return array<string, list<int>>
+     */
+    private function mapColumns(array $normalizedHeader): array
     {
         $columns = [];
 
-        foreach ($header as $position => $name) {
-            $normalized = Str::of((string) $name)
-                ->replaceStart("\u{FEFF}", '')
-                ->lower()
-                ->replaceMatches('/[^a-z0-9]+/', '_')
-                ->trim('_')
-                ->value();
-
-            foreach (self::COLUMN_ALIASES as $field => $aliases) {
-                if (! isset($columns[$field]) && in_array($normalized, $aliases, true)) {
-                    $columns[$field] = $position;
+        foreach (self::COLUMN_ALIASES as $field => $aliases) {
+            foreach ($aliases as $alias) {
+                foreach (array_keys($normalizedHeader, $alias, true) as $position) {
+                    $columns[$field][] = $position;
                 }
             }
         }
@@ -215,36 +271,40 @@ class ProcessImport implements ShouldQueue
     }
 
     /**
-     * Trim values, turn blanks into nulls, and normalize email, domain, and name fields.
+     * Pick each field's value, then normalize names, email, email status, domain, and URLs.
      *
-     * @param  array<string, int>  $columns
+     * @param  array<string, list<int>>  $columns
      * @param  list<string|null>  $values
-     * @return array<string, int|string|null>
+     * @return array<string, string|null>
      */
     private function normalize(array $columns, array $values): array
     {
-        $data = [];
+        $data = $this->pickValues($columns, $values);
 
-        foreach (array_keys(self::COLUMN_ALIASES) as $field) {
-            $value = isset($columns[$field]) ? trim((string) ($values[$columns[$field]] ?? '')) : '';
-            $data[$field] = $value === '' ? null : $value;
+        foreach (['company', 'industry', 'size', 'city', 'state', 'seniority'] as $field) {
+            if ($data[$field] !== null) {
+                $data[$field] = Str::limit($data[$field], 255, '');
+            }
         }
 
-        foreach (['company', 'industry', 'size'] as $companyField) {
-            if ($data[$companyField] !== null) {
-                $data[$companyField] = Str::limit($data[$companyField], 255, '');
-            }
+        if ($data['state'] !== null) {
+            $data['state'] = UsState::normalize($data['state']);
         }
 
         if ($data['name'] !== null && $data['first_name'] === null && $data['last_name'] === null) {
             [$data['first_name'], $data['last_name']] = array_pad(explode(' ', $data['name'], 2), 2, null);
         }
 
-        unset($data['name']);
-
         if ($data['email'] !== null) {
             $data['email'] = Contact::normalizeEmail($data['email']);
         }
+
+        $data['list_email_status'] = $data['email_status'];
+        $data['email_status'] = EmailStatus::fromListValues(
+            $data['email'] === null ? null : $data['email_status'],
+            $data['email_catch_all'],
+            $data['email_bounced'],
+        )?->value;
 
         $domain = $data['domain'] !== null
             ? Company::normalizeDomain($data['domain'])
@@ -254,7 +314,51 @@ class ProcessImport implements ShouldQueue
             ? $domain
             : null;
 
+        $data['source_url'] = $this->httpUrl($data['source_url']);
+
+        unset($data['name'], $data['email_catch_all'], $data['email_bounced']);
+
         return $data;
+    }
+
+    /**
+     * Take each field's value from the first of its columns that is not blank.
+     *
+     * @param  array<string, list<int>>  $columns
+     * @param  list<string|null>  $values
+     * @return array<string, string|null>
+     */
+    private function pickValues(array $columns, array $values): array
+    {
+        $data = [];
+
+        foreach (array_keys(self::COLUMN_ALIASES) as $field) {
+            $data[$field] = null;
+
+            foreach ($columns[$field] ?? [] as $position) {
+                $value = trim((string) ($values[$position] ?? ''));
+
+                if ($value !== '') {
+                    $data[$field] = $value;
+
+                    break;
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Keep a URL only if it is an http or https link, so it is safe to show as a link.
+     */
+    private function httpUrl(?string $url): ?string
+    {
+        if ($url === null || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return null;
+        }
+
+        return in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true) ? $url : null;
     }
 
     /**
@@ -272,101 +376,166 @@ class ProcessImport implements ShouldQueue
     }
 
     /**
-     * Find or create each row's company, matching by domain first and then by name.
+     * Collect the Apollo company columns that have a value.
      *
-     * @param  list<ImportRow>  $rows
-     * @return list<ImportRow>
+     * @param  array<int, string>  $detailColumns
+     * @param  list<string|null>  $values
+     * @return array<string, string>
      */
-    private function resolveCompanies(array $rows): array
+    private function companyDetails(array $detailColumns, array $values): array
     {
-        $importable = array_filter($rows, fn (array $row): bool => $this->identifiesContact($row['data']));
+        $details = [];
 
-        $byDomain = $this->companiesByDomain($importable);
-        $byName = $this->companiesByName(array_filter($importable, fn (array $row): bool => $row['data']['domain'] === null));
+        foreach ($detailColumns as $position => $column) {
+            $value = trim((string) ($values[$position] ?? ''));
 
-        foreach ($rows as $index => $row) {
-            $domain = $row['data']['domain'];
-            $company = $row['data']['company'];
-
-            $rows[$index]['data']['company_id'] = match (true) {
-                $domain !== null => $byDomain[(string) $domain] ?? null,
-                $company !== null => $byName[Str::lower((string) $company)] ?? null,
-                default => null,
-            };
+            if ($value !== '') {
+                $details[$column] = $value;
+            }
         }
 
-        return $rows;
+        return $details;
     }
 
     /**
-     * Whether a row names a contact at all. Rows that do not will fail validation,
-     * so no company is created for them.
+     * Attach the row's company and tag ids. Rows that do not name a contact will
+     * fail validation, so no company or tag is created for them.
      *
-     * @param  array<string, int|string|null>  $data
+     * @param  array{row_number: int, raw: array<string, string|null>, data: array<string, string|null>, details: array<string, string>}  $row
+     * @return ImportRow
      */
-    private function identifiesContact(array $data): bool
+    private function resolveRelations(array $row): array
     {
-        return $data['email'] !== null || $data['first_name'] !== null || $data['last_name'] !== null;
+        $data = $row['data'];
+        $identifiesContact = $data['email'] !== null || $data['first_name'] !== null || $data['last_name'] !== null;
+
+        return [
+            'row_number' => $row['row_number'],
+            'raw' => $row['raw'],
+            'data' => $data,
+            'company_id' => $identifiesContact ? $this->companyId($data, $row['details']) : null,
+            'tag_ids' => $identifiesContact ? $this->tagIds($data['lists']) : [],
+        ];
     }
 
     /**
-     * @param  array<int, ImportRow>  $rows
-     * @return array<string, int>
+     * Find or create the row's company, matching by Apollo account, then domain, then name and state.
+     * Existing companies only get their blank fields filled in.
+     *
+     * @param  array<string, string|null>  $data
+     * @param  array<string, string>  $details
      */
-    private function companiesByDomain(array $rows): array
+    private function companyId(array $data, array $details): ?int
     {
-        $rowsByDomain = collect($rows)->filter(fn (array $row): bool => $row['data']['domain'] !== null)
-            ->keyBy(fn (array $row): string => (string) $row['data']['domain']);
+        $accountId = $data['apollo_account_id'];
+        $domain = $data['domain'];
+        $name = $data['company'];
 
-        if ($rowsByDomain->isEmpty()) {
-            return [];
+        if ($accountId === null && $domain === null && $name === null) {
+            return null;
         }
 
-        $companies = Company::query()
-            ->whereIn('domain', $rowsByDomain->keys())
-            ->pluck('id', 'domain')
-            ->all();
+        $keys = array_values(array_filter([
+            $accountId !== null ? "account:{$accountId}" : null,
+            $domain !== null ? "domain:{$domain}" : null,
+            $domain === null && $name !== null ? 'name:'.Str::lower($name).'|'.Str::lower((string) $data['state']) : null,
+        ]));
 
-        foreach ($rowsByDomain as $domain => $row) {
-            $companies[$domain] ??= Company::createOrFirst(['domain' => $domain], [
-                'name' => $row['data']['company'] ?? $domain,
-                'industry' => $row['data']['industry'],
-                'size' => $row['data']['size'],
-            ])->id;
+        foreach ($keys as $key) {
+            if (isset($this->companyIds[$key])) {
+                return $this->companyIds[$key];
+            }
         }
 
-        return $companies;
+        $attributes = array_filter([
+            'industry' => $data['industry'],
+            'size' => $data['size'],
+            'city' => $data['city'],
+            'state' => $data['state'],
+            'phone' => $data['company_phone'] !== null ? Str::limit($data['company_phone'], 50, '') : null,
+            'enrichment_data' => $details !== [] ? $details : null,
+            'enriched_at' => $details !== [] ? now() : null,
+        ], fn (mixed $value): bool => $value !== null);
+
+        $company = $this->existingCompany($accountId, $domain, $name, $data['state']);
+
+        if ($company === null) {
+            $company = Company::createOrFirst(
+                match (true) {
+                    $domain !== null => ['domain' => $domain],
+                    $accountId !== null => ['apollo_account_id' => $accountId],
+                    default => ['name' => $name],
+                },
+                [...$attributes, 'name' => $name ?? $domain ?? $accountId, 'domain' => $domain, 'apollo_account_id' => $accountId],
+            );
+        } else {
+            $company->fill(array_filter(
+                $attributes,
+                fn (mixed $value, string $field): bool => $company->getAttribute($field) === null,
+                ARRAY_FILTER_USE_BOTH,
+            ))->save();
+        }
+
+        foreach ($keys as $key) {
+            $this->companyIds[$key] = $company->id;
+        }
+
+        return $company->id;
     }
 
     /**
-     * @param  array<int, ImportRow>  $rows
-     * @return array<string, int>
+     * Find an existing company by Apollo account, then domain, then name within the
+     * same state, so same-named dealerships in different states stay separate.
      */
-    private function companiesByName(array $rows): array
+    private function existingCompany(?string $accountId, ?string $domain, ?string $name, ?string $state): ?Company
     {
-        $rowsByName = collect($rows)->filter(fn (array $row): bool => $row['data']['company'] !== null)
-            ->keyBy(fn (array $row): string => Str::lower((string) $row['data']['company']));
-
-        if ($rowsByName->isEmpty()) {
-            return [];
+        if ($accountId !== null && ($company = Company::firstWhere('apollo_account_id', $accountId)) !== null) {
+            return $company;
         }
 
-        $companies = Company::query()
-            ->whereIn('name', $rowsByName->map(fn (array $row): string => (string) $row['data']['company'])->values())
+        if ($domain !== null) {
+            return Company::firstWhere('domain', $domain);
+        }
+
+        if ($name === null) {
+            return null;
+        }
+
+        return Company::query()
+            ->whereNull('domain')
+            ->where('name', $name)
+            ->when(
+                $state !== null,
+                fn ($query) => $query->where('state', $state),
+                fn ($query) => $query->whereNull('state'),
+            )
             ->orderBy('id')
-            ->get(['id', 'name'])
-            ->unique(fn (Company $company): string => Str::lower($company->name))
-            ->mapWithKeys(fn (Company $company): array => [Str::lower($company->name) => $company->id])
-            ->all();
+            ->first();
+    }
 
-        foreach ($rowsByName as $name => $row) {
-            $companies[$name] ??= Company::create([
-                'name' => $row['data']['company'],
-                'industry' => $row['data']['industry'],
-                'size' => $row['data']['size'],
-            ])->id;
+    /**
+     * Find or create a tag for each list in Apollo's comma-separated "Lists" column.
+     *
+     * @return list<int>
+     */
+    private function tagIds(?string $lists): array
+    {
+        if ($lists === null) {
+            return [];
         }
 
-        return $companies;
+        $ids = [];
+
+        foreach (preg_split('/[,;]/', $lists) ?: [] as $name) {
+            $name = Str::limit(trim($name), 50, '');
+
+            if ($name === '') {
+                continue;
+            }
+
+            $ids[] = $this->tagIds[Str::lower($name)] ??= Tag::createOrFirst(['name' => $name])->id;
+        }
+
+        return array_values(array_unique($ids));
     }
 }

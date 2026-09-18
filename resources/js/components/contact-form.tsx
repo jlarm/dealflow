@@ -83,6 +83,19 @@ export default function ContactForm({
                             defaultValue={contact?.title}
                             error={errors.title}
                         />
+                        <Field
+                            name="seniority"
+                            label="Seniority"
+                            defaultValue={contact?.seniority}
+                            error={errors.seniority}
+                            placeholder="e.g. owner, director, manager"
+                        />
+                        <Field
+                            name="departments"
+                            label="Departments"
+                            defaultValue={contact?.departments}
+                            error={errors.departments}
+                        />
 
                         <div className="grid gap-2">
                             <Label htmlFor="company_id">Company</Label>

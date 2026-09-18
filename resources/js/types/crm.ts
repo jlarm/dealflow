@@ -27,6 +27,8 @@ export type Tag = {
 export type CompanyOption = {
     id: number;
     name: string;
+    city?: string | null;
+    state?: string | null;
 };
 
 export type Company = {
@@ -35,6 +37,9 @@ export type Company = {
     domain: string | null;
     industry: string | null;
     size: string | null;
+    city: string | null;
+    state: string | null;
+    phone: string | null;
     enriched_at: string | null;
     created_at: string | null;
     contacts_count?: number;
@@ -50,6 +55,8 @@ export type Contact = {
     email_status: string | null;
     phone: string | null;
     title: string | null;
+    seniority: string | null;
+    departments: string | null;
     linkedin_url: string | null;
     source_list: string | null;
     status: ContactStatusValue;
@@ -119,4 +126,9 @@ export type ImportFailure = {
     row_number: number;
     errors: string[];
     raw_row: Record<string, string | null>;
+};
+
+export type CompanyDetail = {
+    label: string;
+    value: string;
 };

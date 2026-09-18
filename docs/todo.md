@@ -61,21 +61,22 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Imports added to the top bar nav
 - [x] Feature tests passing (fixture CSV with duplicates and bad rows)
 
-## Phase 5: Dealer List Import
-- [ ] Get the full Apollo export header row (columns after Sub Departments)
-- [ ] Confirm Email Status values for both formats, Apollo Catch-all Status values, and dealer-list Source Type values
-- [ ] Apollo column aliases (phones, employees, industry, LinkedIn, website, location)
-- [ ] Seniority / Departments: contact fields or tags (decide)
-- [ ] Column aliases: "Dealership / Group" → company, "Public Email" → email
-- [ ] Map Email Status (+ Apollo Catch-all Status) → `email_status`
-- [ ] `city` and `state` on companies, filled from the list
-- [ ] Match domain-less companies by name + state
-- [ ] `ActivityType::Imported` timeline entry with source list, Source Type, Source URL, Research Date, Notes
-- [ ] Decide the sending rule for unverified emails (`contactable()` scope)
-- [ ] Show city/state on companies and contacts; filter contacts by state
-- [ ] Tests with fixtures using the real dealer-list and Apollo header rows
+## Phase 5: Contact List Import (Apollo exports + dealer lists)
+- [x] Full Apollo export header row
+- [x] Decisions: Seniority/Departments as contact fields; Apollo Lists as tags; ignore Apollo Stage/Replied/Last Contacted; campaigns send to verified emails only
+- [x] Email status mapping from Email Status + Catch-all Status + Email Bounced (unknown values count as risky)
+- [x] Column aliases for both formats (dealership, public email, Apollo phones, company location, ids)
+- [x] Companies: `city`, `state`, `phone`, `apollo_account_id`; Apollo company data into `enrichment_data`
+- [x] Company matching: Apollo Account Id, then domain, then name + state
+- [x] Contacts: `seniority`, `departments`, `apollo_contact_id`; match by email, then Apollo Contact Id
+- [x] Apollo Lists → tags
+- [x] `ActivityType::Imported` timeline entry with source list and research details
+- [x] Show city/state on companies; seniority/departments on contacts; filter contacts by state and seniority
+- [x] State names normalized to two-letter codes (Apollo uses "Texas", dealer lists use "TX")
+- [x] Tests with fixtures using the real dealer-list and Apollo header rows
 
 ## Phase 6: Campaigns and Sending (Mailgun)
+- [ ] `contactable()` only allows valid (verified, non-catch-all) email statuses
 - [ ] Install `symfony/mailgun-mailer` + `symfony/http-client` (approved)
 - [ ] `services.mailgun` config + `.env.example` entries
 - [ ] Campaigns resource (CRUD, status)
@@ -86,6 +87,24 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [ ] `campaigns:send-due` scheduled command (`withoutOverlapping`)
 - [ ] `UnsubscribeController` (signed route)
 - [ ] Feature tests passing
+
+### AI drafting with Claude
+- [ ] Claude API client (package needs approval) + `services.anthropic` config + `.env.example` entries
+- [ ] `ai_conversations` + `ai_messages` migrations, models, factories (conversation belongs to a campaign step, so the back-and-forth is saved and can be picked up later)
+- [ ] System prompt built from campaign context: target audience, step number, earlier steps' content, available merge fields
+- [ ] Claude returns a structured draft (subject + body) alongside its chat reply
+- [ ] `CampaignStepDraftController` (start a conversation, send a follow-up message asking for changes)
+- [ ] Chat panel on the step edit page (message history, input, streamed replies, loading state)
+- [ ] "Use this draft" fills the step's subject/body; still editable by hand afterwards
+- [ ] Reject drafts that use merge fields that don't exist
+- [ ] Feature tests passing (Claude responses faked)
+
+### Draft checks with Jev (TypeSafe)
+- [ ] `services.typesafe` config + `.env.example` entries; call the HTTP API with Laravel's `Http` client (no new package)
+- [ ] Checks on a step's subject/body: spammy language, clear call to action, tone fits the audience, reads as personal rather than mass mail
+- [ ] Show results as warnings on the step edit page, using probabilities with thresholds (don't block saving)
+- [ ] Re-run checks when a Claude draft is applied or the step is edited
+- [ ] Feature tests passing (Jev responses faked)
 
 ## Phase 7: Mailgun Webhooks and Reply Detection
 - [ ] `VerifyMailgunSignature` middleware (HMAC, timestamp freshness, token reuse check)

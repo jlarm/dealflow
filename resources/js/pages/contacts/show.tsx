@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { formatLocation } from '@/lib/location';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type {
     Activity,
@@ -144,6 +145,12 @@ export default function ContactShow({
                                 {[contact.title, contact.company?.name]
                                     .filter(Boolean)
                                     .join(' at ')}
+                                {contact.company &&
+                                    formatLocation(
+                                        contact.company.city,
+                                        contact.company.state,
+                                    ) &&
+                                    ` · ${formatLocation(contact.company.city, contact.company.state)}`}
                             </p>
                         )}
                     </div>
@@ -270,6 +277,14 @@ export default function ContactShow({
                                     <Stat
                                         label="Added"
                                         value={formatDate(contact.created_at)}
+                                    />
+                                    <Stat
+                                        label="Seniority"
+                                        value={contact.seniority ?? '—'}
+                                    />
+                                    <Stat
+                                        label="Departments"
+                                        value={contact.departments ?? '—'}
                                     />
                                 </dl>
                             </CardContent>
@@ -502,6 +517,10 @@ function ActivityBody({
         );
     }
 
+    if (activity.type === 'imported') {
+        return <ImportedDetails payload={activity.payload} />;
+    }
+
     const text = activity.payload.body ?? activity.payload.subject;
 
     return text ? (
@@ -509,6 +528,45 @@ function ActivityBody({
             {text}
         </p>
     ) : null;
+}
+
+function ImportedDetails({ payload }: { payload: Activity['payload'] }) {
+    const details = [
+        { label: 'Email status', value: payload.email_status },
+        { label: 'Source', value: payload.source_type },
+        { label: 'Researched', value: payload.research_date },
+    ].filter((detail) => detail.value);
+    const sourceUrl = payload.source_url?.match(/^https?:\/\//)
+        ? payload.source_url
+        : null;
+
+    return (
+        <div className="text-foreground/80 space-y-1">
+            <p>From “{payload.source_list}”</p>
+            {details.length > 0 && (
+                <p className="text-muted-foreground text-xs">
+                    {details
+                        .map((detail) => `${detail.label}: ${detail.value}`)
+                        .join(' · ')}
+                </p>
+            )}
+            {sourceUrl && (
+                <a
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block truncate text-xs hover:underline"
+                >
+                    {sourceUrl}
+                </a>
+            )}
+            {payload.notes && (
+                <p className="break-words whitespace-pre-line">
+                    {payload.notes}
+                </p>
+            )}
+        </div>
+    );
 }
 
 function TimelineSkeleton() {

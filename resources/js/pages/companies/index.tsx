@@ -10,6 +10,7 @@ import Heading from '@/components/heading';
 import Pagination from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatLocation } from '@/lib/location';
 import type { Company, Paginated } from '@/types';
 
 export default function CompaniesIndex({
@@ -70,6 +71,9 @@ export default function CompaniesIndex({
                                     Domain
                                 </th>
                                 <th className="px-4 py-3 font-medium">
+                                    Location
+                                </th>
+                                <th className="px-4 py-3 font-medium">
                                     Industry
                                 </th>
                                 <th className="px-4 py-3 font-medium">
@@ -98,6 +102,12 @@ export default function CompaniesIndex({
                                         {company.domain ?? '—'}
                                     </td>
                                     <td className="px-4 py-3">
+                                        {formatLocation(
+                                            company.city,
+                                            company.state,
+                                        ) || '—'}
+                                    </td>
+                                    <td className="px-4 py-3">
                                         {company.industry ?? '—'}
                                     </td>
                                     <td className="px-4 py-3">
@@ -112,7 +122,7 @@ export default function CompaniesIndex({
                             {companies.data.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={5}
+                                        colSpan={6}
                                         className="text-muted-foreground px-4 py-12 text-center"
                                     >
                                         No companies found.

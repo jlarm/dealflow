@@ -44,6 +44,8 @@ class ContactController extends Controller
             'tag' => $request->integer('tag') ?: null,
             'company' => $request->integer('company') ?: null,
             'source_list' => $request->string('source_list')->trim()->value(),
+            'state' => $request->string('state')->trim()->value(),
+            'seniority' => $request->string('seniority')->trim()->value(),
             'sort' => array_key_exists($request->string('sort')->value(), self::SORTABLE_COLUMNS)
                 ? $request->string('sort')->value()
                 : 'created_at',
@@ -51,12 +53,14 @@ class ContactController extends Controller
         ];
 
         $contacts = Contact::query()
-            ->with(['company:id,name', 'tags:id,name'])
+            ->with(['company:id,name,city,state', 'tags:id,name'])
             ->when($filters['search'], fn (Builder $query, string $search) => $query->search($search))
             ->when($filters['status'], fn (Builder $query, string $status) => $query->where('status', $status))
             ->when($filters['tag'], fn (Builder $query, int $tag) => $query->whereRelation('tags', 'tags.id', $tag))
             ->when($filters['company'], fn (Builder $query, int $company) => $query->where('company_id', $company))
             ->when($filters['source_list'], fn (Builder $query, string $sourceList) => $query->where('source_list', $sourceList))
+            ->when($filters['state'], fn (Builder $query, string $state) => $query->whereRelation('company', 'state', $state))
+            ->when($filters['seniority'], fn (Builder $query, string $seniority) => $query->where('seniority', $seniority))
             ->tap(function (Builder $query) use ($filters): void {
                 foreach (self::SORTABLE_COLUMNS[$filters['sort']] as $column) {
                     $query->orderBy($column, $filters['direction']);
@@ -76,6 +80,16 @@ class ContactController extends Controller
                 ->distinct()
                 ->orderBy('source_list')
                 ->pluck('source_list'),
+            'states' => Company::query()
+                ->whereNotNull('state')
+                ->distinct()
+                ->orderBy('state')
+                ->pluck('state'),
+            'seniorities' => Contact::query()
+                ->whereNotNull('seniority')
+                ->distinct()
+                ->orderBy('seniority')
+                ->pluck('seniority'),
         ]);
     }
 
@@ -107,7 +121,7 @@ class ContactController extends Controller
      */
     public function show(Contact $contact): Response
     {
-        $contact->load(['company:id,name', 'tags:id,name']);
+        $contact->load(['company:id,name,city,state', 'tags:id,name']);
 
         return Inertia::render('contacts/show', [
             'contact' => new ContactResource($contact),

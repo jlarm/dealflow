@@ -12,6 +12,7 @@ import StatusBadge from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatLocation } from '@/lib/location';
 import {
     Select,
     SelectContent,
@@ -27,6 +28,8 @@ type Filters = {
     tag: number | null;
     company: number | null;
     source_list: string;
+    state: string;
+    seniority: string;
     sort: 'name' | 'score' | 'last_contacted_at' | 'created_at';
     direction: 'asc' | 'desc';
 };
@@ -37,6 +40,8 @@ type ContactsIndexProps = {
     statuses: StatusOption[];
     tags: Tag[];
     sourceLists: string[];
+    states: string[];
+    seniorities: string[];
 };
 
 const ALL = 'all';
@@ -47,6 +52,8 @@ export default function ContactsIndex({
     statuses,
     tags,
     sourceLists,
+    states,
+    seniorities,
 }: ContactsIndexProps) {
     const [search, setSearch] = useState(filters.search);
     const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -148,6 +155,30 @@ export default function ContactsIndex({
                             applyFilters({ source_list: sourceList ?? '' })
                         }
                     />
+
+                    <FilterSelect
+                        value={filters.state || null}
+                        placeholder="All states"
+                        options={states.map((state) => ({
+                            value: state,
+                            label: state,
+                        }))}
+                        onChange={(state) =>
+                            applyFilters({ state: state ?? '' })
+                        }
+                    />
+
+                    <FilterSelect
+                        value={filters.seniority || null}
+                        placeholder="All seniorities"
+                        options={seniorities.map((seniority) => ({
+                            value: seniority,
+                            label: seniority,
+                        }))}
+                        onChange={(seniority) =>
+                            applyFilters({ seniority: seniority ?? '' })
+                        }
+                    />
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border">
@@ -202,6 +233,18 @@ export default function ContactsIndex({
                                     </td>
                                     <td className="px-4 py-3">
                                         {contact.company?.name ?? '—'}
+                                        {contact.company &&
+                                            formatLocation(
+                                                contact.company.city,
+                                                contact.company.state,
+                                            ) && (
+                                                <p className="text-muted-foreground">
+                                                    {formatLocation(
+                                                        contact.company.city,
+                                                        contact.company.state,
+                                                    )}
+                                                </p>
+                                            )}
                                     </td>
                                     <td className="px-4 py-3">
                                         <StatusBadge

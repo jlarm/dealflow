@@ -18,6 +18,9 @@ const fields = [
     { name: 'domain', label: 'Domain', placeholder: 'acme.com' },
     { name: 'industry', label: 'Industry' },
     { name: 'size', label: 'Employees', placeholder: '51-200' },
+    { name: 'city', label: 'City' },
+    { name: 'state', label: 'State', placeholder: 'TX' },
+    { name: 'phone', label: 'Phone' },
 ] as const;
 
 export default function CompanyForm({
