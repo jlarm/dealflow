@@ -131,20 +131,25 @@ Contact lists come in two formats, and the importer needs to handle both fully i
 
 ## Phase 6: Campaigns and Sending (Mailgun)
 
-- Install `symfony/mailgun-mailer` and `symfony/http-client`.
-- Add a `mailgun` block to `config/services.php`: `domain`, `secret`, `endpoint`, `webhook_signing_key`, `scheme`. Values come from the environment.
-- Campaign CRUD, nested `campaigns.steps` routes (`scopeBindings`), and `CampaignEnrollmentController` (bulk-enroll a filtered contact set in chunks; remove an enrollment).
-- Scheduled `campaigns:send-due` runs every 5 minutes with `withoutOverlapping()`. It walks `dueForSend()` enrollments in active campaigns with `chunkById` and dispatches `SendCampaignStep` for each.
-- `SendCampaignStep`:
-  - Re-checks that the contact is still contactable and the enrollment is still active.
-  - Sends `CampaignStepMail` with:
-    - a signed unsubscribe URL and a `List-Unsubscribe` header
-    - `Reply-To` on the inbound domain
-    - an `X-Mailgun-Variables` header carrying the `enrollment_id` and `step`
-  - Records the `Message-Id` from the sent message, writes the "email sent" activity and updates `last_contacted_at`.
-  - Advances `sequence_step` / `next_send_at`, or sets `completed_at` after the last step.
-  - Is idempotent: a unique lock on enrollment + step.
-- `UnsubscribeController` sits behind a `signed` route and sets `unsubscribed_at`.
+- Install `symfony/mailgun-mailer` and `symfony/http-client`. Add the `mailgun` mailer, a `mailgun` block in `config/services.php` (domain, secret, endpoint, webhook signing key) and a global Reply-To in `config/mail.php`.
+- **Sending rule:** `contactable()` only allows verified addresses (valid status) that haven't unsubscribed.
+- **Sending safeguards** (`config/outreach.php`, set in `.env`): a daily limit across all campaigns, and a weekday business-hours window in a set timezone.
+- Campaign CRUD and status changes. A campaign can't be activated without at least one email.
+- **Campaign emails** are nested under the campaign with scoped bindings and appended in order. They can be edited any time and removed only while the campaign is a draft, since removing one later would shift contacts' place in the sequence.
+- **Merge fields** such as `{{first_name}}` and `{{company}}`, with fallbacks like `{{first_name|there}}`.
+- **Enrolling** happens from the contact list: filter it, then "Add to campaign". Only verified contacts are added, and duplicates are skipped.
+- `CampaignStepMail`:
+  - DealFlow sets its own `Message-ID` and stores it, for matching replies and events whichever provider sends.
+  - One-click unsubscribe headers (`List-Unsubscribe` and `List-Unsubscribe-Post`).
+  - Mailgun variables: `enrollment_id`, `campaign_id`, `contact_id`, `step`.
+  - The body is escaped plain text shown as simple HTML.
+- `SendCampaignStep` (unique per enrollment):
+  - Re-checks that the campaign is active and the contact is still contactable. If the contact isn't, the enrollment is stopped.
+  - Respects the daily limit.
+  - Records the `sent` email event as soon as the email is accepted, so a retry finishes the bookkeeping without emailing twice.
+  - Logs "Email Sent" and schedules the next email, or finishes the sequence.
+- `campaigns:send-due` runs every five minutes (`withoutOverlapping`, `onOneServer`). It only queues inside the sending window, up to what's left of the daily limit, oldest-due first. The scheduler has to be running: `php artisan schedule:work` locally, or the platform's scheduler in production.
+- **Unsubscribe:** opening the permanent signed link shows a confirmation page, because mail scanners follow links. Unsubscribing is a POST from that page or from a mail client's one-click request (CSRF-exempt, authenticated by the signature). It stops every campaign the contact is in and logs it on their timeline.
 
 ## Phase 7: Mailgun Webhooks and Reply Detection
 

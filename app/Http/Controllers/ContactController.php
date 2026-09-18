@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ActivityType;
+use App\Enums\CampaignStatus;
 use App\Enums\ContactStatus;
+use App\Http\Requests\ContactFilterRequest;
 use App\Http\Requests\ContactStoreRequest;
 use App\Http\Requests\ContactUpdateRequest;
 use App\Http\Resources\ActivityResource;
 use App\Http\Resources\ContactResource;
 use App\Http\Resources\TagResource;
+use App\Models\Campaign;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\Tag;
@@ -36,16 +39,10 @@ class ContactController extends Controller
     /**
      * Show the filterable list of contacts.
      */
-    public function index(Request $request): Response
+    public function index(ContactFilterRequest $request): Response
     {
         $filters = [
-            'search' => $request->string('search')->trim()->value(),
-            'status' => ContactStatus::tryFrom($request->string('status')->value())?->value,
-            'tag' => $request->integer('tag') ?: null,
-            'company' => $request->integer('company') ?: null,
-            'source_list' => $request->string('source_list')->trim()->value(),
-            'state' => $request->string('state')->trim()->value(),
-            'seniority' => $request->string('seniority')->trim()->value(),
+            ...$request->filters(),
             'sort' => array_key_exists($request->string('sort')->value(), self::SORTABLE_COLUMNS)
                 ? $request->string('sort')->value()
                 : 'created_at',
@@ -54,13 +51,7 @@ class ContactController extends Controller
 
         $contacts = Contact::query()
             ->with(['company:id,name,city,state', 'tags:id,name'])
-            ->when($filters['search'], fn (Builder $query, string $search) => $query->search($search))
-            ->when($filters['status'], fn (Builder $query, string $status) => $query->where('status', $status))
-            ->when($filters['tag'], fn (Builder $query, int $tag) => $query->whereRelation('tags', 'tags.id', $tag))
-            ->when($filters['company'], fn (Builder $query, int $company) => $query->where('company_id', $company))
-            ->when($filters['source_list'], fn (Builder $query, string $sourceList) => $query->where('source_list', $sourceList))
-            ->when($filters['state'], fn (Builder $query, string $state) => $query->whereRelation('company', 'state', $state))
-            ->when($filters['seniority'], fn (Builder $query, string $seniority) => $query->where('seniority', $seniority))
+            ->filter($request->filters())
             ->tap(function (Builder $query) use ($filters): void {
                 foreach (self::SORTABLE_COLUMNS[$filters['sort']] as $column) {
                     $query->orderBy($column, $filters['direction']);
@@ -90,6 +81,11 @@ class ContactController extends Controller
                 ->distinct()
                 ->orderBy('seniority')
                 ->pluck('seniority'),
+            'campaigns' => Campaign::query()
+                ->where('status', '!=', CampaignStatus::Completed)
+                ->orderBy('name')
+                ->get(['id', 'name', 'status']),
+            'contactableCount' => Contact::query()->filter($request->filters())->contactable()->count(),
         ]);
     }
 

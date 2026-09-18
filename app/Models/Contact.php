@@ -149,7 +149,8 @@ class Contact extends Model
     }
 
     /**
-     * Scope the query to contacts that may receive outreach email.
+     * Scope the query to contacts that campaigns may email: a verified address
+     * (valid status) that has not unsubscribed.
      *
      * @param  Builder<self>  $query
      */
@@ -158,9 +159,36 @@ class Contact extends Model
     {
         $query->whereNotNull('email')
             ->whereNull('unsubscribed_at')
-            ->where(fn (Builder $query) => $query
-                ->whereNull('email_status')
-                ->orWhereNotIn('email_status', EmailStatus::unsendable()));
+            ->where('email_status', EmailStatus::Valid);
+    }
+
+    /**
+     * Determine whether campaigns may email this contact.
+     */
+    public function isContactable(): bool
+    {
+        return $this->email !== null
+            && $this->unsubscribed_at === null
+            && $this->email_status === EmailStatus::Valid;
+    }
+
+    /**
+     * Scope the query to the contact list filters from ContactFilterRequest.
+     *
+     * @param  Builder<self>  $query
+     * @param  array{search: string, status: string|null, tag: int|null, company: int|null, source_list: string, state: string, seniority: string}  $filters
+     */
+    #[Scope]
+    protected function filter(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['search'], fn (Builder $query, string $search) => $query->search($search))
+            ->when($filters['status'], fn (Builder $query, string $status) => $query->where('status', $status))
+            ->when($filters['tag'], fn (Builder $query, int $tag) => $query->whereRelation('tags', 'tags.id', $tag))
+            ->when($filters['company'], fn (Builder $query, int $company) => $query->where('company_id', $company))
+            ->when($filters['source_list'], fn (Builder $query, string $sourceList) => $query->where('source_list', $sourceList))
+            ->when($filters['state'], fn (Builder $query, string $state) => $query->whereRelation('company', 'state', $state))
+            ->when($filters['seniority'], fn (Builder $query, string $seniority) => $query->where('seniority', $seniority));
     }
 
     /**

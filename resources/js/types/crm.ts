@@ -132,3 +132,40 @@ export type CompanyDetail = {
     label: string;
     value: string;
 };
+
+export type CampaignStatusValue = 'draft' | 'active' | 'paused' | 'completed';
+
+export type Campaign = {
+    id: number;
+    name: string;
+    status: CampaignStatusValue;
+    status_label: string;
+    steps_count?: number;
+    enrollments_count?: number;
+    active_enrollments_count?: number;
+    created_at: string | null;
+};
+
+export type CampaignOption = {
+    id: number;
+    name: string;
+    status: CampaignStatusValue;
+};
+
+export type CampaignStep = {
+    id: number;
+    position: number;
+    subject: string;
+    body: string;
+    delay_days: number;
+};
+
+export type CampaignEnrollment = {
+    id: number;
+    contact?: { id: number; name: string; email: string | null };
+    sequence_step: number;
+    state: 'active' | 'completed' | 'stopped';
+    stop_reason: string | null;
+    enrolled_at: string;
+    next_send_at: string | null;
+};

@@ -5,7 +5,7 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 ## Phase 0: Foundations
 - [x] Turn on `Model::shouldBeStrict()` outside production in `AppServiceProvider`
 - [x] Enums: `ContactStatus`, `CampaignStatus`, `ActivityType`, `EmailEventType`, `ImportStatus` (with `label()`; `ContactStatus` also gets `color()`)
-- [ ] Top bar nav (`resources/js/lib/navigation.ts`): each item is added in the phase that creates its routes (Contacts/Companies/Tags done in 2, Pipeline in 3, Imports in 4; Campaigns in 6)
+- [x] Top bar nav (`resources/js/lib/navigation.ts`): each item is added in the phase that creates its routes (all done: Contacts/Companies/Tags in 2, Pipeline in 3, Imports in 4, Campaigns in 6)
 
 ## Phase 1: Schema, Models, Factories
 - [x] `companies` migration, model, factory (`enriched()` state)
@@ -76,35 +76,21 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Tests with fixtures using the real dealer-list and Apollo header rows
 
 ## Phase 6: Campaigns and Sending (Mailgun)
-- [ ] `contactable()` only allows valid (verified, non-catch-all) email statuses
-- [ ] Install `symfony/mailgun-mailer` + `symfony/http-client` (approved)
-- [ ] `services.mailgun` config + `.env.example` entries
-- [ ] Campaigns resource (CRUD, status)
-- [ ] Campaign steps (nested, scoped bindings, ordering)
-- [ ] `CampaignEnrollmentController` (bulk enroll a filtered contact set, remove)
-- [ ] `CampaignStepMail` mailable (unsubscribe link, `List-Unsubscribe`, `Reply-To`, `X-Mailgun-Variables`)
-- [ ] `SendCampaignStep` job (re-check contactable, send, record `message_id`, advance step, idempotent)
-- [ ] `campaigns:send-due` scheduled command (`withoutOverlapping`)
-- [ ] `UnsubscribeController` (signed route)
-- [ ] Feature tests passing
-
-### AI drafting with Claude
-- [ ] Claude API client (package needs approval) + `services.anthropic` config + `.env.example` entries
-- [ ] `ai_conversations` + `ai_messages` migrations, models, factories (conversation belongs to a campaign step, so the back-and-forth is saved and can be picked up later)
-- [ ] System prompt built from campaign context: target audience, step number, earlier steps' content, available merge fields
-- [ ] Claude returns a structured draft (subject + body) alongside its chat reply
-- [ ] `CampaignStepDraftController` (start a conversation, send a follow-up message asking for changes)
-- [ ] Chat panel on the step edit page (message history, input, streamed replies, loading state)
-- [ ] "Use this draft" fills the step's subject/body; still editable by hand afterwards
-- [ ] Reject drafts that use merge fields that don't exist
-- [ ] Feature tests passing (Claude responses faked)
-
-### Draft checks with Jev (TypeSafe)
-- [ ] `services.typesafe` config + `.env.example` entries; call the HTTP API with Laravel's `Http` client (no new package)
-- [ ] Checks on a step's subject/body: spammy language, clear call to action, tone fits the audience, reads as personal rather than mass mail
-- [ ] Show results as warnings on the step edit page, using probabilities with thresholds (don't block saving)
-- [ ] Re-run checks when a Claude draft is applied or the step is edited
-- [ ] Feature tests passing (Jev responses faked)
+- [x] `contactable()` only allows valid (verified, non-catch-all) email statuses
+- [x] Install `symfony/mailgun-mailer` + `symfony/http-client` (approved)
+- [x] `services.mailgun` config, `mailgun` mailer, global Reply-To, and `.env.example` entries
+- [x] `config/outreach.php`: daily sending limit and weekday business-hours sending window
+- [x] Campaigns resource (CRUD) + status changes (activate needs at least one email)
+- [x] Campaign emails (nested, scoped bindings, appended in order; removable only while draft)
+- [x] Merge fields with fallbacks, e.g. `{{first_name|there}}`
+- [x] Enroll from the filtered contact list ("Add to campaign"); verified contacts only, duplicates skipped
+- [x] `CampaignStepMail` (DealFlow Message-ID, one-click unsubscribe headers, Mailgun variables, escaped plain-text body)
+- [x] `SendCampaignStep` job (re-check contactable, send, record sent event first so retries never double-send, advance step)
+- [x] `campaigns:send-due` scheduled every 5 minutes (`withoutOverlapping`, `onOneServer`)
+- [x] Public unsubscribe page + one-click unsubscribe (signed URL, CSRF-exempt POST, stops every campaign)
+- [x] Campaigns added to the top bar nav
+- [x] Feature tests passing
+- [ ] Production: set `MAIL_MAILER=mailgun`, Mailgun keys, `MAIL_FROM_ADDRESS` on the sending subdomain, `MAIL_REPLY_TO_ADDRESS`, and run the scheduler (manual)
 
 ## Phase 7: Mailgun Webhooks and Reply Detection
 - [ ] `VerifyMailgunSignature` middleware (HMAC, timestamp freshness, token reuse check)

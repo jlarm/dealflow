@@ -6,6 +6,7 @@ import {
     index,
     show,
 } from '@/actions/App/Http/Controllers/ContactController';
+import AddToCampaign from '@/components/add-to-campaign';
 import Heading from '@/components/heading';
 import Pagination from '@/components/pagination';
 import StatusBadge from '@/components/status-badge';
@@ -20,7 +21,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { Contact, Paginated, StatusOption, Tag } from '@/types';
+import type {
+    CampaignOption,
+    Contact,
+    Paginated,
+    StatusOption,
+    Tag,
+} from '@/types';
 
 type Filters = {
     search: string;
@@ -42,6 +49,8 @@ type ContactsIndexProps = {
     sourceLists: string[];
     states: string[];
     seniorities: string[];
+    campaigns: CampaignOption[];
+    contactableCount: number;
 };
 
 const ALL = 'all';
@@ -54,6 +63,8 @@ export default function ContactsIndex({
     sourceLists,
     states,
     seniorities,
+    campaigns,
+    contactableCount,
 }: ContactsIndexProps) {
     const [search, setSearch] = useState(filters.search);
     const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -105,12 +116,27 @@ export default function ContactsIndex({
                         title="Contacts"
                         description="Everyone in your pipeline, across every source list"
                     />
-                    <Button asChild>
-                        <Link href={create()}>
-                            <Plus />
-                            New contact
-                        </Link>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <AddToCampaign
+                            campaigns={campaigns}
+                            contactableCount={contactableCount}
+                            filters={{
+                                search: filters.search,
+                                status: filters.status,
+                                tag: filters.tag,
+                                company: filters.company,
+                                source_list: filters.source_list,
+                                state: filters.state,
+                                seniority: filters.seniority,
+                            }}
+                        />
+                        <Button asChild>
+                            <Link href={create()}>
+                                <Plus />
+                                New contact
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3">

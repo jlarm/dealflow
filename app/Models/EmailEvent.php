@@ -45,6 +45,19 @@ class EmailEvent extends Model
     }
 
     /**
+     * Count the campaign emails sent since midnight in the outreach timezone.
+     */
+    public static function sentToday(): int
+    {
+        $timezone = config('outreach.timezone');
+
+        return self::query()
+            ->where('event_type', EmailEventType::Sent)
+            ->where('occurred_at', '>=', now($timezone)->startOfDay()->utc())
+            ->count();
+    }
+
+    /**
      * @return BelongsTo<Contact, $this>
      */
     public function contact(): BelongsTo

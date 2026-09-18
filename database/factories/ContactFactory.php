@@ -65,6 +65,14 @@ class ContactFactory extends Factory
     }
 
     /**
+     * Indicate that the contact's email address is verified, so campaigns may email them.
+     */
+    public function verified(): static
+    {
+        return $this->withEmailStatus(EmailStatus::Valid);
+    }
+
+    /**
      * Indicate that the contact has no email address.
      */
     public function withoutEmail(): static

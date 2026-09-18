@@ -3,6 +3,7 @@
 use App\Enums\ActivityType;
 use App\Enums\ContactStatus;
 use App\Models\Activity;
+use App\Models\Campaign;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\Tag;
@@ -60,6 +61,23 @@ describe('index', function () {
             ->where('contacts.data.0.company.state', 'TX')
             ->where('states', ['OK', 'TX'])
             ->where('seniorities', ['manager', 'owner']));
+    });
+
+    test('offers open campaigns and counts the verified contacts matching the filters', function () {
+        $draft = Campaign::factory()->create(['name' => 'B draft']);
+        $active = Campaign::factory()->active()->create(['name' => 'A active']);
+        Campaign::factory()->create(['status' => 'completed']);
+        Contact::factory()->count(2)->verified()->withStatus(ContactStatus::Qualified)->create();
+        Contact::factory()->withStatus(ContactStatus::Qualified)->create(['email_status' => null]);
+        Contact::factory()->verified()->withStatus(ContactStatus::New)->create();
+
+        $response = $this->actingAs(User::factory()->create())->get(route('contacts.index', ['status' => 'qualified']));
+
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('campaigns.0.id', $active->id)
+            ->where('campaigns.1.id', $draft->id)
+            ->has('campaigns', 2)
+            ->where('contactableCount', 2));
     });
 
     test('sorts by name in the requested direction', function () {

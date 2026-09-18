@@ -74,6 +74,49 @@ class CampaignEnrollment extends Pivot
     }
 
     /**
+     * Determine whether the contact is still working through the sequence.
+     */
+    public function isActive(): bool
+    {
+        return $this->completed_at === null && $this->stopped_at === null;
+    }
+
+    /**
+     * Stop the sequence early, e.g. because the contact unsubscribed or replied.
+     */
+    public function stop(string $reason): void
+    {
+        $this->update([
+            'stopped_at' => now(),
+            'stop_reason' => $reason,
+            'next_send_at' => null,
+        ]);
+    }
+
+    /**
+     * Record that a step was sent and schedule the next one, or finish the sequence.
+     */
+    public function advanceTo(int $position, ?CampaignStep $nextStep): void
+    {
+        $this->update([
+            'sequence_step' => $position,
+            'next_send_at' => $nextStep === null ? null : now()->addDays($nextStep->delay_days),
+            'completed_at' => $nextStep === null ? now() : null,
+        ]);
+    }
+
+    /**
+     * Scope the query to enrollments that are still working through the sequence.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function active(Builder $query): void
+    {
+        $query->whereNull('completed_at')->whereNull('stopped_at');
+    }
+
+    /**
      * Scope the query to enrollments whose next step should be sent now.
      *
      * @param  Builder<self>  $query
@@ -81,8 +124,7 @@ class CampaignEnrollment extends Pivot
     #[Scope]
     protected function dueForSend(Builder $query): void
     {
-        $query->whereNull('completed_at')
-            ->whereNull('stopped_at')
+        $query->active()
             ->where('next_send_at', '<=', now())
             ->whereRelation('campaign', 'status', CampaignStatus::Active);
     }

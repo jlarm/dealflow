@@ -25,19 +25,25 @@ test('the status scope returns only contacts in the given stage', function () {
     expect($contacts->all())->toBe([$qualified->id]);
 });
 
-test('the contactable scope excludes contacts that must not receive outreach email', function () {
-    $unverified = Contact::factory()->create();
-    $valid = Contact::factory()->withEmailStatus(EmailStatus::Valid)->create();
-    $risky = Contact::factory()->withEmailStatus(EmailStatus::Risky)->create();
+test('only verified, subscribed contacts are contactable', function () {
+    $verified = Contact::factory()->withEmailStatus(EmailStatus::Valid)->create();
+    Contact::factory()->create(['email_status' => null]);
+    Contact::factory()->withEmailStatus(EmailStatus::Risky)->create();
     Contact::factory()->withEmailStatus(EmailStatus::Invalid)->create();
     Contact::factory()->withEmailStatus(EmailStatus::Bounced)->create();
     Contact::factory()->withEmailStatus(EmailStatus::Complained)->create();
-    Contact::factory()->unsubscribed()->create();
-    Contact::factory()->withoutEmail()->create();
+    Contact::factory()->withEmailStatus(EmailStatus::Valid)->unsubscribed()->create();
+    Contact::factory()->withEmailStatus(EmailStatus::Valid)->withoutEmail()->create();
 
-    $contactable = Contact::contactable()->orderBy('id')->pluck('id');
+    $contactable = Contact::contactable()->pluck('id');
 
-    expect($contactable->all())->toBe([$unverified->id, $valid->id, $risky->id]);
+    expect($contactable->all())->toBe([$verified->id]);
+});
+
+test('a contact is contactable only with a verified address and no unsubscribe', function () {
+    expect(Contact::factory()->withEmailStatus(EmailStatus::Valid)->make()->isContactable())->toBeTrue()
+        ->and(Contact::factory()->withEmailStatus(EmailStatus::Risky)->make()->isContactable())->toBeFalse()
+        ->and(Contact::factory()->withEmailStatus(EmailStatus::Valid)->unsubscribed()->make()->isContactable())->toBeFalse();
 });
 
 test('deleting a company keeps its contacts without a company', function () {

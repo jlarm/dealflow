@@ -3,9 +3,11 @@ import {
     FileUp,
     KanbanSquare,
     LayoutGrid,
+    Send,
     Tags,
     Users,
 } from 'lucide-react';
+import { index as campaignsIndex } from '@/actions/App/Http/Controllers/CampaignController';
 import { index as companiesIndex } from '@/actions/App/Http/Controllers/CompanyController';
 import { index as contactsIndex } from '@/actions/App/Http/Controllers/ContactController';
 import { index as importsIndex } from '@/actions/App/Http/Controllers/ImportController';
@@ -37,6 +39,11 @@ export const mainNavItems: NavItem[] = [
         title: 'Companies',
         href: companiesIndex(),
         icon: Building2,
+    },
+    {
+        title: 'Campaigns',
+        href: campaignsIndex(),
+        icon: Send,
     },
     {
         title: 'Tags',

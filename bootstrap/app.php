@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Mail clients' one-click unsubscribe POSTs carry no CSRF token; the signed URL authenticates them.
+        $middleware->validateCsrfTokens(except: ['unsubscribe/*']);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

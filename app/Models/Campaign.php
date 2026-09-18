@@ -17,6 +17,10 @@ use Illuminate\Support\Carbon;
  * @property CampaignStatus $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read int $enrollments_count
+ * @property-read int $active_enrollments_count
+ * @property-read int $completed_enrollments_count
+ * @property-read int $stopped_enrollments_count
  */
 #[Fillable(['name', 'status'])]
 class Campaign extends Model
@@ -72,5 +76,15 @@ class Campaign extends Model
     public function enrollments(): HasMany
     {
         return $this->hasMany(CampaignEnrollment::class);
+    }
+
+    /**
+     * The enrollments still working through the sequence.
+     *
+     * @return HasMany<CampaignEnrollment, $this>
+     */
+    public function activeEnrollments(): HasMany
+    {
+        return $this->enrollments()->active();
     }
 }
