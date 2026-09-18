@@ -21,7 +21,7 @@ trait CompanyValidationRules
                 'nullable',
                 'string',
                 'max:255',
-                'regex:/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/',
+                'regex:'.Company::DOMAIN_PATTERN,
                 $companyId === null
                     ? Rule::unique(Company::class)
                     : Rule::unique(Company::class)->ignore($companyId),

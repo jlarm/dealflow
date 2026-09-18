@@ -1,6 +1,14 @@
-import { Building2, KanbanSquare, LayoutGrid, Tags, Users } from 'lucide-react';
+import {
+    Building2,
+    FileUp,
+    KanbanSquare,
+    LayoutGrid,
+    Tags,
+    Users,
+} from 'lucide-react';
 import { index as companiesIndex } from '@/actions/App/Http/Controllers/CompanyController';
 import { index as contactsIndex } from '@/actions/App/Http/Controllers/ContactController';
+import { index as importsIndex } from '@/actions/App/Http/Controllers/ImportController';
 import { index as pipelineIndex } from '@/actions/App/Http/Controllers/PipelineController';
 import { index as tagsIndex } from '@/actions/App/Http/Controllers/TagController';
 import { dashboard } from '@/routes';
@@ -34,5 +42,10 @@ export const mainNavItems: NavItem[] = [
         title: 'Tags',
         href: tagsIndex(),
         icon: Tags,
+    },
+    {
+        title: 'Imports',
+        href: importsIndex(),
+        icon: FileUp,
     },
 ];

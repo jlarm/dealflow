@@ -5,7 +5,7 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 ## Phase 0: Foundations
 - [x] Turn on `Model::shouldBeStrict()` outside production in `AppServiceProvider`
 - [x] Enums: `ContactStatus`, `CampaignStatus`, `ActivityType`, `EmailEventType`, `ImportStatus` (with `label()`; `ContactStatus` also gets `color()`)
-- [ ] Top bar nav (`resources/js/lib/navigation.ts`): each item is added in the phase that creates its routes (Contacts/Companies/Tags done in 2, Pipeline in 3; Imports in 4, Campaigns in 6)
+- [ ] Top bar nav (`resources/js/lib/navigation.ts`): each item is added in the phase that creates its routes (Contacts/Companies/Tags done in 2, Pipeline in 3, Imports in 4; Campaigns in 6)
 
 ## Phase 1: Schema, Models, Factories
 - [x] `companies` migration, model, factory (`enriched()` state)
@@ -52,13 +52,15 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Feature tests passing
 
 ## Phase 4: CSV Import
-- [ ] `StoreImportRequest` + `ImportController` (store file, create import, dispatch job)
-- [ ] `ProcessImport` job (stream CSV, map headers, batch chunks)
-- [ ] `ImportContactsChunk` job (validate, normalize, dedupe, `upsert`, counters, failures)
-- [ ] Batch `finally` / `then` callbacks (status + trigger enrichment)
-- [ ] Imports index + upload page
-- [ ] Import show page with polling progress bar + failures table
-- [ ] Feature tests passing (fixture CSV with duplicates and bad rows)
+- [x] `ImportStoreRequest` + `ImportController` (store file, create import, dispatch job)
+- [x] `ProcessImport` job (stream CSV, map headers incl. common aliases, resolve companies, batch chunks)
+- [x] `ImportContactsChunk` job (validate, normalize, dedupe by email, fill blanks only, counters, failures; one transaction per chunk)
+- [x] Batch `finally` callback marks the import completed/failed; uploaded file deleted after reading
+- [ ] Batch `then` callback triggers enrichment (added with Phase 5)
+- [x] Imports index + upload page
+- [x] Import show page with polling progress bar + failures table
+- [x] Imports added to the top bar nav
+- [x] Feature tests passing (fixture CSV with duplicates and bad rows)
 
 ## Phase 5: Enrichment
 - [ ] `EnrichmentProvider` interface + `ApolloEnrichmentProvider`, bound in `AppServiceProvider`

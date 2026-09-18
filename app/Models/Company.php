@@ -30,6 +30,11 @@ class Company extends Model
     use HasFactory;
 
     /**
+     * The pattern a normalized domain must match, e.g. "acme.com".
+     */
+    public const string DOMAIN_PATTERN = '/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/';
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

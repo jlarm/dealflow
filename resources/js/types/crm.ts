@@ -97,3 +97,26 @@ export type CursorPaginated<T> = {
         prev_cursor: string | null;
     };
 };
+
+export type ImportStatusValue = 'processing' | 'completed' | 'failed';
+
+export type Import = {
+    id: number;
+    filename: string;
+    source_list: string;
+    status: ImportStatusValue;
+    status_label: string;
+    row_count: number;
+    processed_rows: number;
+    failed_rows: number;
+    error: string | null;
+    user?: { id: number; name: string } | null;
+    created_at: string | null;
+};
+
+export type ImportFailure = {
+    id: number;
+    row_number: number;
+    errors: string[];
+    raw_row: Record<string, string | null>;
+};

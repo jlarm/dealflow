@@ -1,0 +1,8 @@
+First Name,Last Name,Email Address,Company,Website,Job Title,Phone
+Jane,Doe, Jane.Doe@Acme.com ,Acme Motors,https://www.acme.com/about,General Manager,555-0100
+John,Smith,john@acme.com,Acme Motors,acme.com,Sales Manager,
+,,not-an-email,Bad Co,,,
+Pat,Lee,,Northside Auto,,Owner,555-0101
+Jane,Doe,jane.doe@acme.com,Acme Motors,,,555-9999
+,,,,,,
+Sam,Rivera,sam@gmail.com,Rivera Trucks,,,

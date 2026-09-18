@@ -23,10 +23,11 @@ use Illuminate\Support\Carbon;
  * @property int $row_count
  * @property int $processed_rows
  * @property int $failed_rows
+ * @property string|null $error
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['user_id', 'filename', 'path', 'source_list', 'status', 'row_count'])]
+#[Fillable(['user_id', 'filename', 'path', 'source_list', 'status', 'row_count', 'error'])]
 class Import extends Model
 {
     /** @use HasFactory<ImportFactory> */
@@ -57,6 +58,27 @@ class Import extends Model
             'processed_rows' => 'integer',
             'failed_rows' => 'integer',
         ];
+    }
+
+    /**
+     * Mark the import as finished once every chunk has run.
+     */
+    public function finish(int $failedChunks = 0): void
+    {
+        $this->update($failedChunks === 0
+            ? ['status' => ImportStatus::Completed]
+            : [
+                'status' => ImportStatus::Failed,
+                'error' => trans_choice(':count batch of rows could not be imported.|:count batches of rows could not be imported.', $failedChunks),
+            ]);
+    }
+
+    /**
+     * Mark the whole import as failed, e.g. when the file cannot be read.
+     */
+    public function fail(string $error): void
+    {
+        $this->update(['status' => ImportStatus::Failed, 'error' => $error]);
     }
 
     /**
