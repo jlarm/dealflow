@@ -56,18 +56,21 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] `ProcessImport` job (stream CSV, map headers incl. common aliases, resolve companies, batch chunks)
 - [x] `ImportContactsChunk` job (validate, normalize, dedupe by email, fill blanks only, counters, failures; one transaction per chunk)
 - [x] Batch `finally` callback marks the import completed/failed; uploaded file deleted after reading
-- [ ] Batch `then` callback triggers enrichment (added with Phase 5)
 - [x] Imports index + upload page
 - [x] Import show page with polling progress bar + failures table
 - [x] Imports added to the top bar nav
 - [x] Feature tests passing (fixture CSV with duplicates and bad rows)
 
-## Phase 5: Enrichment
-- [ ] `EnrichmentProvider` interface + `ApolloEnrichmentProvider`, bound in `AppServiceProvider`
-- [ ] `services.apollo` config + `.env.example` entries
-- [ ] `enrichment` rate limiter
-- [ ] `EnrichCompany` job (unique, rate limited, backoff, skips enriched)
-- [ ] Tests with `Http::fake` (success, 429, connection failure)
+## Phase 5: Dealer List Import
+- [ ] Confirm the values used in the Email Status column (and Source Type) with a sample
+- [ ] Column aliases: "Dealership / Group" → company, "Public Email" → email
+- [ ] Map Email Status → `email_status`
+- [ ] `city` and `state` on companies, filled from the list
+- [ ] Match domain-less companies by name + state
+- [ ] `ActivityType::Imported` timeline entry with source list, Source Type, Source URL, Research Date, Notes
+- [ ] Decide the sending rule for unverified emails (`contactable()` scope)
+- [ ] Show city/state on companies and contacts; filter contacts by state
+- [ ] Tests with a fixture using the real dealer-list header row
 
 ## Phase 6: Campaigns and Sending (Mailgun)
 - [ ] Install `symfony/mailgun-mailer` + `symfony/http-client` (approved)

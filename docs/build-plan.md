@@ -10,7 +10,8 @@ Implementation plan for `docs/crm-data-model.md` and `docs/dealflow-overview.md`
 | 2 | CSV parsing | No `laravel-excel`. The file is streamed with the built-in `LazyCollection` and `fgetcsv`, then processed in chunks with `Bus::batch`. |
 | 3 | Live import progress | Inertia v3 polling (`usePoll`). Add Reverb later only if polling isn't good enough. |
 | 4 | Search | Indexed database filters first. Scout + Meilisearch is optional, in Phase 8. |
-| 5 | Email provider | **Mailgun.** It's already in use, and Postmark doesn't allow cold or unsolicited outreach. Enrichment sits behind an `EnrichmentProvider` interface, with Apollo first. |
+| 5 | Email provider | **Mailgun.** It's already in use, and Postmark doesn't allow cold or unsolicited outreach. |
+| 6 | Enrichment | **No third-party enrichment API.** Contact lists are researched dealer lists (partly sourced from Apollo), so the data comes in through the CSV instead. Phase 5 makes the importer understand that format. An email verification service (ZeroBounce, NeverBounce) can be added later if unverified addresses turn out to matter. |
 
 **New dependencies:** Phase 6 needs `symfony/mailgun-mailer` and `symfony/http-client` for Laravel's `mailgun` transport. Nothing else is added unless Phase 8 is approved.
 
@@ -22,9 +23,9 @@ Implementation plan for `docs/crm-data-model.md` and `docs/dealflow-overview.md`
   - Add a unique index on (`campaign_id`, `contact_id`) and an index on `next_send_at`.
 - **`contacts`**:
   - `email` is a nullable unique column, stored lowercase. It's the key for de-duplication.
-  - Add `unsubscribed_at` (the do-not-contact / CAN-SPAM list) and `email_status` (the result of email verification during enrichment).
+  - Add `unsubscribed_at` (the do-not-contact / CAN-SPAM list) and `email_status` (from the list's Email Status column, and later from bounces).
   - Index (`status`, `score`).
-- **`companies`**: `domain` is a nullable unique column (the key for matching). Add `enriched_at`.
+- **`companies`**: `domain` is a nullable unique column (the key for matching). Add `enriched_at`. Phase 5 adds `city` and `state`, because dealer lists identify a dealership by name and location, not by website.
 - **`email_events`**:
   - Add a unique `provider_event_id` (Mailgun `event-data.id`) so resent webhooks aren't stored twice.
   - Add `payload` (JSON) so events can be reprocessed.
@@ -91,7 +92,7 @@ Implementation plan for `docs/crm-data-model.md` and `docs/dealflow-overview.md`
 2. `ProcessImport`:
    - Stream the file with `LazyCollection` and map the header row.
    - Split rows into chunks of 500 and put them in a `Bus::batch` of `ImportContactsChunk` jobs with `allowFailures()`.
-   - The batch's `finally` callback sets the import status. Its `then` callback dispatches enrichment.
+   - The batch's `finally` callback sets the import status.
 3. `ImportContactsChunk`:
    - Validate each row. Failed rows go to `import_failures`.
    - Normalize email and domain. Match companies by domain, then contacts by email.
@@ -100,15 +101,20 @@ Implementation plan for `docs/crm-data-model.md` and `docs/dealflow-overview.md`
    - Keep `$timeout` below the queue's `retry_after` of 90 seconds.
 4. The `imports/show` page polls every 2 seconds until the import is finished, showing a progress bar and a failures table.
 
-## Phase 5: Enrichment
+## Phase 5: Dealer List Import
 
-- An `app/Contracts/EnrichmentProvider` interface with an `ApolloEnrichmentProvider` implementation, bound in `AppServiceProvider`. The key lives in `config/services.php` under `apollo`, read from the environment.
-- HTTP calls use `connectTimeout(3)->timeout(10)`, retry only on connection errors, 5xx and 429, and call `throw()`.
-- `EnrichCompany` job:
-  - `ShouldBeUnique` on the company ID.
-  - `RateLimited('enrichment')` middleware, with `$tries` / `$backoff`.
-  - Skips any company that already has `enriched_at`.
-  - Stores the raw response in `enrichment_data` and fills in `industry` / `size`.
+The contact lists are researched dealer lists with these columns: State, City, Dealership / Group, Contact Name, Title, Public Email, Email Status, Source Type, Source URL, Research Date, Notes. Phase 5 makes the importer handle that format fully, instead of calling an enrichment API.
+
+- **Column aliases:** "Dealership / Group" maps to company and "Public Email" maps to email. "Contact Name" and "Title" already map.
+- **Email Status:** mapped to `email_status`. The exact values in the lists need confirming before the mapping is written (for example "Verified" → valid, "Unverified" → risky).
+- **Dealership location:**
+  - Add `city` and `state` columns to `companies` and fill them from the list.
+  - With no website column, companies without a domain are matched by name and state, so two dealerships with the same name in different states stay separate.
+  - A domain is still taken from a work email address when there is one.
+- **Research details:** each imported contact gets an "Imported" timeline entry, a new `ActivityType::Imported`. It holds the source list, Source Type, Source URL, Research Date and Notes, so you can see where a lead came from and what was known about them.
+- **Existing contacts:** matching by email stays as it is, and only blank fields are filled in. A contact already in the database still gets an "Imported" entry when a new list contains them, so the timeline shows every list they appeared in.
+- **Sending rule:** decide whether campaigns send only to verified emails or to unverified ones too. This goes into the `contactable()` scope used by Phase 6.
+- **UI:** show city and state on company pages and in the contact list, and let contacts be filtered by state.
 
 ## Phase 6: Campaigns and Sending (Mailgun)
 
@@ -170,7 +176,7 @@ Pest feature tests per phase, using factory states:
 
 - **Status changes**: the status-change action writes an activity, and invalid transitions are rejected.
 - **Imports**: `Storage::fake` + `Bus::assertBatched`. The chunk job gets a fixture CSV with duplicates and bad rows, and the tests assert on de-duplication and `import_failures`.
-- **Enrichment**: `Http::preventStrayRequests()` + `Http::fake`, covering connection-failure and 429 paths.
+- **Dealer lists**: a fixture with the real dealer-list header row, covering email status mapping, company matching by name and state, and the Imported timeline entry.
 - **Sending**: `Mail::fake`. Unsubscribed contacts are skipped, the step advances, and a retry doesn't send twice.
 - **Webhooks**:
   - A bad or stale signature is rejected, and a reused token is rejected.
