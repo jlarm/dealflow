@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Moves a contact to a new pipeline stage and records the change on its timeline.
+ * The contact goes to the top of the new stage on the board.
  */
 class ChangeContactStatus
 {
@@ -25,7 +26,10 @@ class ChangeContactStatus
         return DB::transaction(function () use ($contact, $status, $user): Contact {
             $previousStatus = $contact->status;
 
-            $contact->update(['status' => $status]);
+            $contact->update([
+                'status' => $status,
+                'pipeline_position' => Contact::topOfStage($status),
+            ]);
 
             $this->logActivity->handle($contact, ActivityType::StatusChange, [
                 'from' => $previousStatus->value,

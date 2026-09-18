@@ -31,6 +31,7 @@ use Illuminate\Support\Str;
  * @property string|null $source_list
  * @property string|null $apollo_contact_id
  * @property ContactStatus $status
+ * @property float $pipeline_position
  * @property int $score
  * @property Carbon|null $last_contacted_at
  * @property Carbon|null $unsubscribed_at
@@ -51,6 +52,7 @@ use Illuminate\Support\Str;
     'source_list',
     'apollo_contact_id',
     'status',
+    'pipeline_position',
     'score',
     'last_contacted_at',
     'unsubscribed_at',
@@ -79,11 +81,45 @@ class Contact extends Model
     {
         return [
             'status' => ContactStatus::class,
+            'pipeline_position' => 'float',
             'email_status' => EmailStatus::class,
             'score' => 'integer',
             'last_contacted_at' => 'datetime',
             'unsubscribed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The gap left between neighbouring cards on the pipeline board.
+     */
+    public const int PIPELINE_GAP = 1024;
+
+    /**
+     * New contacts join the bottom of their stage on the pipeline board.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Contact $contact): void {
+            if (! $contact->isDirty('pipeline_position')) {
+                $contact->pipeline_position = self::bottomOfStage($contact->status);
+            }
+        });
+    }
+
+    /**
+     * A board position above every card in the stage.
+     */
+    public static function topOfStage(ContactStatus $status): float
+    {
+        return (float) (self::query()->withStatus($status)->min('pipeline_position') ?? self::PIPELINE_GAP) - self::PIPELINE_GAP;
+    }
+
+    /**
+     * A board position below every card in the stage.
+     */
+    public static function bottomOfStage(ContactStatus $status): float
+    {
+        return (float) (self::query()->withStatus($status)->max('pipeline_position') ?? 0) + self::PIPELINE_GAP;
     }
 
     /**

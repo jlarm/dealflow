@@ -35,7 +35,7 @@ class PipelineController extends Controller
     }
 
     /**
-     * Get the highest-scoring contacts in a stage, one page at a time.
+     * Get a stage's contacts in board order, one page at a time.
      *
      * Cursor pagination continues after the last loaded card, so moving cards
      * between columns never shifts the next page and skips a contact.
@@ -47,9 +47,9 @@ class PipelineController extends Controller
         return Inertia::scroll(fn () => ContactResource::collection(
             Contact::query()
                 ->withStatus($status)
-                ->with(['company:id,name,city,state', 'tags:id,name'])
-                ->orderByDesc('score')
-                ->orderByDesc('id')
+                ->with('company:id,name,city,state')
+                ->orderBy('pipeline_position')
+                ->orderBy('id')
                 ->cursorPaginate(self::CONTACTS_PER_COLUMN, cursorName: $status->value)
         ))->matchOn('data.id');
     }

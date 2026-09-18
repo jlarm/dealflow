@@ -141,3 +141,11 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* The pipeline board's drop placeholder opens smoothly, easing the cards below it down. */
+@keyframes drop-slot-open {
+    from {
+        height: 0;
+        opacity: 0;
+    }
+}

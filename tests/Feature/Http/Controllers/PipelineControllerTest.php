@@ -11,9 +11,9 @@ test('guests are redirected to the login page', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('groups contacts into stage columns with the highest scores first', function () {
-    $low = Contact::factory()->withStatus(ContactStatus::Qualified)->create(['score' => 10]);
-    $high = Contact::factory()->withStatus(ContactStatus::Qualified)->create(['score' => 90]);
+test('groups contacts into stage columns in board order', function () {
+    $second = Contact::factory()->withStatus(ContactStatus::Qualified)->create(['pipeline_position' => 2048]);
+    $first = Contact::factory()->withStatus(ContactStatus::Qualified)->create(['pipeline_position' => 1024]);
     $won = Contact::factory()->withStatus(ContactStatus::Won)->create();
 
     $response = $this->actingAs(User::factory()->create())->get(route('pipeline.index'));
@@ -21,8 +21,8 @@ test('groups contacts into stage columns with the highest scores first', functio
     $response->assertInertia(fn (Assert $page) => $page
         ->component('pipeline/index')
         ->has('statuses', count(ContactStatus::cases()))
-        ->where('stage_qualified.data.0.id', $high->id)
-        ->where('stage_qualified.data.1.id', $low->id)
+        ->where('stage_qualified.data.0.id', $first->id)
+        ->where('stage_qualified.data.1.id', $second->id)
         ->where('stage_won.data.0.id', $won->id)
         ->has('stage_new.data', 0)
         ->where('counts', [

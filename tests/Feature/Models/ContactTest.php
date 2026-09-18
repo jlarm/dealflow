@@ -72,3 +72,11 @@ test('deleting a contact removes its timeline, email events, tags, and enrollmen
     $this->assertModelExists($tag);
     $this->assertModelExists($campaign);
 });
+
+test('new contacts join the bottom of their stage on the board', function () {
+    $existing = Contact::factory()->withStatus(ContactStatus::New)->create();
+
+    $new = Contact::factory()->withStatus(ContactStatus::New)->create();
+
+    expect($new->pipeline_position)->toBeGreaterThan($existing->pipeline_position);
+});

@@ -12,6 +12,17 @@ const colorClasses: Record<string, string> = {
     red: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
 };
 
+/** A solid swatch per status color, for small dots beside a label. */
+export const statusDotClasses: Record<string, string> = {
+    slate: 'bg-slate-400',
+    blue: 'bg-blue-500',
+    violet: 'bg-violet-500',
+    amber: 'bg-amber-500',
+    cyan: 'bg-cyan-500',
+    green: 'bg-green-500',
+    red: 'bg-red-500',
+};
+
 export default function StatusBadge({
     status,
     className,

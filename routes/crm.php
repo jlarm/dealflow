@@ -10,6 +10,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ContactStatusController;
 use App\Http\Controllers\ContactTagController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\PipelineContactController;
 use App\Http\Controllers\PipelineController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\UnsubscribeController;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('pipeline', [PipelineController::class, 'index'])->name('pipeline.index');
+    Route::patch('pipeline/contacts/{contact}', [PipelineContactController::class, 'update'])->name('pipeline.contacts.update');
 
     Route::resource('contacts', ContactController::class);
     Route::patch('contacts/{contact}/status', [ContactStatusController::class, 'update'])->name('contacts.status.update');

@@ -40,3 +40,12 @@ test('rejects an unknown status', function () {
     expect($contact->refresh()->status)->toBe(ContactStatus::New);
     $this->assertDatabaseEmpty('activities');
 });
+
+test('a contact moved to a new stage goes to the top of it on the board', function () {
+    $existing = Contact::factory()->withStatus(ContactStatus::Qualified)->create();
+    $contact = Contact::factory()->withStatus(ContactStatus::Contacted)->create();
+
+    $this->actingAs(User::factory()->create())->patch(route('contacts.status.update', $contact), ['status' => 'qualified']);
+
+    expect($contact->refresh()->pipeline_position)->toBeLessThan($existing->pipeline_position);
+});

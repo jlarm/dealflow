@@ -49,6 +49,8 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Drag-to-move with optimistic update + rollback
 - [x] "Move to" menu on each card (keyboard and touch alternative to dragging)
 - [x] Pipeline added to the top bar nav
+- [x] Cards land exactly where they're dropped (saved board order via `pipeline_position`), including reordering within a stage
+- [x] Drag animation: faded source card, opening drop placeholder, landing highlight
 - [x] Feature tests passing
 
 ## Phase 4: CSV Import
