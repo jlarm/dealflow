@@ -3,9 +3,9 @@
 Progress tracker for `docs/build-plan.md`. Items are checked off as they are completed and their tests pass.
 
 ## Phase 0: Foundations
-- [ ] Turn on `Model::shouldBeStrict()` outside production in `AppServiceProvider`
-- [ ] Enums: `ContactStatus`, `CampaignStatus`, `ActivityType`, `EmailEventType`, `ImportStatus` (with `label()`; `ContactStatus` also gets `color()`)
-- [ ] Sidebar nav: Pipeline, Contacts, Companies, Campaigns, Imports
+- [x] Turn on `Model::shouldBeStrict()` outside production in `AppServiceProvider`
+- [x] Enums: `ContactStatus`, `CampaignStatus`, `ActivityType`, `EmailEventType`, `ImportStatus` (with `label()`; `ContactStatus` also gets `color()`)
+- [ ] Sidebar nav: each item is added in the phase that creates its routes (Contacts/Companies in 2, Pipeline in 3, Imports in 4, Campaigns in 6)
 
 ## Phase 1: Schema, Models, Factories
 - [ ] `companies` migration, model, factory (`enriched()` state)
