@@ -5,7 +5,7 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 ## Phase 0: Foundations
 - [x] Turn on `Model::shouldBeStrict()` outside production in `AppServiceProvider`
 - [x] Enums: `ContactStatus`, `CampaignStatus`, `ActivityType`, `EmailEventType`, `ImportStatus` (with `label()`; `ContactStatus` also gets `color()`)
-- [ ] Top bar nav (`resources/js/lib/navigation.ts`): each item is added in the phase that creates its routes (Contacts/Companies/Tags done in 2; Pipeline in 3, Imports in 4, Campaigns in 6)
+- [ ] Top bar nav (`resources/js/lib/navigation.ts`): each item is added in the phase that creates its routes (Contacts/Companies/Tags done in 2, Pipeline in 3; Imports in 4, Campaigns in 6)
 
 ## Phase 1: Schema, Models, Factories
 - [x] `companies` migration, model, factory (`enriched()` state)
@@ -43,11 +43,13 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] `/` redirects to the dashboard (internal tool, no public homepage)
 
 ## Phase 3: Pipeline Kanban
-- [ ] `PipelineController@index` (top N per status + grouped counts)
-- [ ] Kanban page with a column per status
-- [ ] Infinite scroll / load more per column
-- [ ] Drag-to-move with optimistic update + rollback
-- [ ] Feature tests passing
+- [x] `PipelineController@index` (top N per status + grouped counts)
+- [x] Kanban page with a column per status
+- [x] Infinite scroll / load more per column
+- [x] Drag-to-move with optimistic update + rollback
+- [x] "Move to" menu on each card (keyboard and touch alternative to dragging)
+- [x] Pipeline added to the top bar nav
+- [x] Feature tests passing
 
 ## Phase 4: CSV Import
 - [ ] `StoreImportRequest` + `ImportController` (store file, create import, dispatch job)

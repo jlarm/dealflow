@@ -5,10 +5,13 @@ use App\Http\Controllers\ContactActivityController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ContactStatusController;
 use App\Http\Controllers\ContactTagController;
+use App\Http\Controllers\PipelineController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('pipeline', [PipelineController::class, 'index'])->name('pipeline.index');
+
     Route::resource('contacts', ContactController::class);
     Route::patch('contacts/{contact}/status', [ContactStatusController::class, 'update'])->name('contacts.status.update');
     Route::post('contacts/{contact}/activities', [ContactActivityController::class, 'store'])->name('contacts.activities.store');

@@ -88,3 +88,13 @@ export type Paginated<T> = {
         total: number;
     };
 };
+
+export type SimplePaginated<T> = {
+    data: T[];
+    meta: {
+        current_page: number;
+        from: number | null;
+        per_page: number;
+        to: number | null;
+    };
+};
