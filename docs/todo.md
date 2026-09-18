@@ -40,7 +40,7 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Fix `UserFactory::withTwoFactor()` (empty starter-kit method)
 - [x] Switch the app layout from sidebar to top bar
 - [x] DealFlow logo, favicons, and app name
-- [x] Simple DealFlow welcome page
+- [x] `/` redirects to the dashboard (internal tool, no public homepage)
 
 ## Phase 3: Pipeline Kanban
 - [ ] `PipelineController@index` (top N per status + grouped counts)
