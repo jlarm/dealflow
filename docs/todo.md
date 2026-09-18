@@ -5,7 +5,7 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 ## Phase 0: Foundations
 - [x] Turn on `Model::shouldBeStrict()` outside production in `AppServiceProvider`
 - [x] Enums: `ContactStatus`, `CampaignStatus`, `ActivityType`, `EmailEventType`, `ImportStatus` (with `label()`; `ContactStatus` also gets `color()`)
-- [ ] Sidebar nav: each item is added in the phase that creates its routes (Contacts/Companies in 2, Pipeline in 3, Imports in 4, Campaigns in 6)
+- [ ] Sidebar nav: each item is added in the phase that creates its routes (Contacts/Companies/Tags done in 2; Pipeline in 3, Imports in 4, Campaigns in 6)
 
 ## Phase 1: Schema, Models, Factories
 - [x] `companies` migration, model, factory (`enriched()` state)
@@ -23,16 +23,18 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Model tests passing
 
 ## Phase 2: Contacts, Companies, Tags, Timeline
-- [ ] `ChangeContactStatus` action (status change + activity in one transaction)
-- [ ] `LogActivity` action
-- [ ] Contacts resource: index (filters, allow-listed sort, pagination), show, create, edit, delete
-- [ ] Contact timeline (deferred prop + skeleton)
-- [ ] `ContactStatusController@update`
-- [ ] `ContactActivityController@store` (notes, calls)
-- [ ] `ContactTagController` (sync)
-- [ ] Companies resource
-- [ ] Tags management
-- [ ] Feature tests passing
+- [x] `ChangeContactStatus` action (status change + activity in one transaction)
+- [x] `LogActivity` action
+- [x] Contacts resource: index (filters, allow-listed sort, pagination), show, create, edit, delete
+- [x] Contact timeline (deferred prop + skeleton)
+- [x] `ContactStatusController@update`
+- [x] `ContactActivityController@store` (notes, calls)
+- [x] `ContactTagController` (sync)
+- [x] Companies resource
+- [x] Tags management
+- [x] Sidebar nav: Contacts, Companies, Tags
+- [x] Feature tests passing
+- [x] Manual browser check of the pages
 
 ## Phase 3: Pipeline Kanban
 - [ ] `PipelineController@index` (top N per status + grouped counts)

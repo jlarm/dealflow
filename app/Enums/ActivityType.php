@@ -34,4 +34,22 @@ enum ActivityType: string
             self::StatusChange => 'Status Change',
         };
     }
+
+    /**
+     * Determine whether this activity is a touchpoint that updates the contact's last contacted date.
+     */
+    public function countsAsContact(): bool
+    {
+        return in_array($this, [self::EmailSent, self::Call], true);
+    }
+
+    /**
+     * Get the activity types a user may log by hand from the contact page.
+     *
+     * @return list<self>
+     */
+    public static function loggable(): array
+    {
+        return [self::Note, self::Call];
+    }
 }

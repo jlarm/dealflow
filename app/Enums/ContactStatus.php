@@ -46,4 +46,18 @@ enum ContactStatus: string
             self::Lost => 'red',
         };
     }
+
+    /**
+     * Get every status as an option for the frontend, in pipeline order.
+     *
+     * @return list<array{value: string, label: string, color: string}>
+     */
+    public static function options(): array
+    {
+        return array_map(fn (self $status): array => [
+            'value' => $status->value,
+            'label' => $status->label(),
+            'color' => $status->color(),
+        ], self::cases());
+    }
 }

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -77,6 +78,14 @@ class Contact extends Model
             'last_contacted_at' => 'datetime',
             'unsubscribed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Normalize an email address so it can be used as the de-duplication key.
+     */
+    public static function normalizeEmail(string $email): string
+    {
+        return Str::lower(trim($email));
     }
 
     /**
@@ -146,5 +155,20 @@ class Contact extends Model
             ->where(fn (Builder $query) => $query
                 ->whereNull('email_status')
                 ->orWhereNotIn('email_status', EmailStatus::unsendable()));
+    }
+
+    /**
+     * Scope the query to contacts whose name, email, title, or company name contains the term.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function search(Builder $query, string $term): void
+    {
+        $pattern = "%{$term}%";
+
+        $query->where(fn (Builder $query) => $query
+            ->whereAny(['first_name', 'last_name', 'email', 'title'], 'like', $pattern)
+            ->orWhereRelation('company', 'name', 'like', $pattern));
     }
 }
