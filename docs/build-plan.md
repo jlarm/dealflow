@@ -176,10 +176,17 @@ Contact lists come in two formats, and the importer needs to handle both fully i
   - Auto-replies are logged but change nothing.
   - The same reply delivered twice is recorded once.
 
-## Phase 8 (optional): Search and Dashboard
+## Phase 8 (optional): Dashboard and Search
 
-- Scout + Meilisearch on `Contact` (name, email, company, title), once approved.
-- Dashboard: pipeline counts by status, reply rate per campaign (conditional `withCount`) and recent imports.
+- **Dashboard (built):**
+  - Stat tiles for contacts and how many are verified, emails sent in the last 7 days, and the 30-day reply rate.
+  - The 30-day bounce rate, with a Healthy / Watch / Too high reading at 2% and 5%.
+  - A meter of today's sends against the daily limit, showing whether the sending window is open.
+  - A 14-day daily sends chart, bucketed by day in the outreach timezone.
+  - Pipeline counts by stage.
+  - Deferred sections: running campaign results (sent, replied, reply rate, bounced), the latest real replies (auto-replies excluded) and recent imports.
+  - Charts use the brand teal, validated for light and dark surfaces.
+- **Search:** Scout + Meilisearch on `Contact`, only if contact volume makes the indexed database filters too slow. It needs approval for new dependencies.
 
 ---
 

@@ -29,7 +29,7 @@ class PipelineController extends Controller
 
         return Inertia::render('pipeline/index', [
             'statuses' => ContactStatus::options(),
-            'counts' => fn (): array => $this->countsByStatus(),
+            'counts' => fn (): array => Contact::countsByStatus(),
             ...$columns,
         ]);
     }
@@ -52,24 +52,5 @@ class PipelineController extends Controller
                 ->orderByDesc('id')
                 ->cursorPaginate(self::CONTACTS_PER_COLUMN, cursorName: $status->value)
         ))->matchOn('data.id');
-    }
-
-    /**
-     * Count the contacts in every stage with a single grouped query.
-     *
-     * @return array<string, int>
-     */
-    private function countsByStatus(): array
-    {
-        $counts = Contact::query()
-            ->toBase()
-            ->select('status')
-            ->selectRaw('count(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status');
-
-        return collect(ContactStatus::cases())
-            ->mapWithKeys(fn (ContactStatus $status): array => [$status->value => (int) ($counts[$status->value] ?? 0)])
-            ->all();
     }
 }

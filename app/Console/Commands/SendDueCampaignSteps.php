@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\SendCampaignStep;
 use App\Models\CampaignEnrollment;
-use App\Models\EmailEvent;
+use App\Services\OutreachSchedule;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -13,17 +13,17 @@ use Illuminate\Console\Command;
 #[Description('Queue the campaign emails that are due, within the sending window and daily limit')]
 class SendDueCampaignSteps extends Command
 {
-    public function handle(): int
+    public function handle(OutreachSchedule $schedule): int
     {
-        if (! $this->insideSendingWindow()) {
+        if (! $schedule->isOpen()) {
             $this->components->info('Outside the sending window, nothing queued.');
 
             return self::SUCCESS;
         }
 
-        $remaining = config('outreach.daily_limit') - EmailEvent::sentToday();
+        $remaining = $schedule->remainingToday();
 
-        if ($remaining <= 0) {
+        if ($remaining === 0) {
             $this->components->info('The daily sending limit has been reached.');
 
             return self::SUCCESS;
@@ -41,17 +41,5 @@ class SendDueCampaignSteps extends Command
         $this->components->info("Queued {$enrollments->count()} campaign emails.");
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Emails only go out on weekdays during business hours in the outreach timezone.
-     */
-    private function insideSendingWindow(): bool
-    {
-        $now = now(config('outreach.timezone'));
-
-        return $now->isWeekday()
-            && $now->hour >= config('outreach.send_from_hour')
-            && $now->hour < config('outreach.send_until_hour');
     }
 }

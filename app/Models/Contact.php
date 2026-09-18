@@ -95,6 +95,29 @@ class Contact extends Model
     }
 
     /**
+     * Count the contacts in every pipeline stage with a single grouped query.
+     *
+     * @return array<string, int>
+     */
+    public static function countsByStatus(): array
+    {
+        $counts = self::query()
+            ->toBase()
+            ->select('status')
+            ->selectRaw('count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $byStatus = [];
+
+        foreach (ContactStatus::cases() as $status) {
+            $byStatus[$status->value] = (int) ($counts[$status->value] ?? 0);
+        }
+
+        return $byStatus;
+    }
+
+    /**
      * @return BelongsTo<Company, $this>
      */
     public function company(): BelongsTo

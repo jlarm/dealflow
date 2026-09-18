@@ -103,9 +103,12 @@ Progress tracker for `docs/build-plan.md`. Items are checked off as they are com
 - [x] Feature tests passing
 - [ ] Mailgun dashboard (manual): webhook URL `https://<app>/webhooks/mailgun/events` for delivered, opened, clicked, permanent failure, complained, and unsubscribed; an inbound Route forwarding the Reply-To address to `https://<app>/webhooks/mailgun/inbound`; `MAILGUN_WEBHOOK_SIGNING_KEY` in `.env`
 
-## Phase 8 (optional): Search and Dashboard
-- [ ] Scout + Meilisearch on `Contact` (approved)
-- [ ] Dashboard: pipeline counts, campaign reply rates, recent imports
+## Phase 8 (optional): Dashboard and Search
+- [x] Dashboard: contacts and verified count, emails sent, reply rate, bounce rate with a health reading, today's sends against the daily limit
+- [x] Dashboard: daily sends chart (14 days, outreach timezone), pipeline by stage, running campaign results, latest real replies, recent imports
+- [x] `OutreachSchedule` service shared by the dashboard, scheduler command, and send job
+- [x] Feature tests passing
+- [ ] Scout + Meilisearch on `Contact` (only if contact volume needs it; needs approval for new dependencies)
 
 ## Deliverability (manual)
 - [ ] Separate sending subdomain

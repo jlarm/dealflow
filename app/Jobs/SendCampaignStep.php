@@ -9,6 +9,7 @@ use App\Enums\EmailEventType;
 use App\Mail\CampaignStepMail;
 use App\Models\CampaignEnrollment;
 use App\Models\EmailEvent;
+use App\Services\OutreachSchedule;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -51,7 +52,7 @@ class SendCampaignStep implements ShouldBeUnique, ShouldQueue
         return (string) $this->enrollment->id;
     }
 
-    public function handle(LogActivity $logActivity): void
+    public function handle(LogActivity $logActivity, OutreachSchedule $schedule): void
     {
         $enrollment = $this->enrollment->fresh(['campaign', 'contact.company']);
 
@@ -80,7 +81,7 @@ class SendCampaignStep implements ShouldBeUnique, ShouldQueue
         $sentEvent = $this->sentEvent($enrollment, $position);
 
         if ($sentEvent === null) {
-            if (EmailEvent::sentToday() >= config('outreach.daily_limit')) {
+            if ($schedule->remainingToday() === 0) {
                 return;
             }
 
