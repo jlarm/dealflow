@@ -1,12 +1,32 @@
 import type { SVGAttributes } from 'react';
+import { cn } from '@/lib/utils';
 
-export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
+/**
+ * The DealFlow mark. The navy "D" follows the current text color so it can
+ * switch to white in dark mode; the teal flow lines keep the brand color.
+ */
+export default function AppLogoIcon({
+    className,
+    ...props
+}: SVGAttributes<SVGElement>) {
     return (
-        <svg {...props} viewBox="0 0 40 42" xmlns="http://www.w3.org/2000/svg">
+        <svg
+            {...props}
+            viewBox="-24 52 1735 1107"
+            xmlns="http://www.w3.org/2000/svg"
+            className={cn('text-[#051D43] dark:text-white', className)}
+        >
             <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.2 5.63325L8.6 0.855469L0 5.63325V32.1434L16.2 41.1434L32.4 32.1434V23.699L40 19.4767V9.85547L31.4 5.07769L22.8 9.85547V18.2999L17.2 21.411V5.63325ZM38 18.2999L32.4 21.411V15.2545L38 12.1434V18.2999ZM36.9409 10.4439L31.4 13.5221L25.8591 10.4439L31.4 7.36561L36.9409 10.4439ZM24.8 18.2999V12.1434L30.4 15.2545V21.411L24.8 18.2999ZM23.8 20.0323L29.3409 23.1105L16.2 30.411L10.6591 27.3328L23.8 20.0323ZM7.6 27.9212L15.2 32.1434V38.2999L2 30.9666V7.92116L7.6 11.0323V27.9212ZM8.6 9.29991L3.05913 6.22165L8.6 3.14339L14.1409 6.22165L8.6 9.29991ZM30.4 24.8101L17.2 32.1434V38.2999L30.4 30.9666V24.8101ZM9.6 11.0323L15.2 7.92117V22.5221L9.6 25.6333V11.0323Z"
+                fill="currentColor"
+                d="M260 76 H1048 C1416 76 1687 319 1687 640 C1687 936 1451 1135 1160 1135 H838 Q818 1135 830 1117 L979 899 Q987 887 1002 887 H1083 C1254 887 1376 782 1376 627 C1376 470 1251 349 1070 349 H246 Q227 349 227 326 V112 Q227 91 246 80 Q252 76 260 76 Z"
+            />
+            <path
+                fill="#008F95"
+                d="M0 1135 C312 759 662 520 1053 486 C1171 475 1240 477 1304 502 Q1325 511 1303 519 C898 526 550 735 274 1135 Z"
+            />
+            <path
+                fill="#008F95"
+                d="M381 1135 Q365 1135 375 1118 C625 769 913 569 1308 536 Q1335 533 1318 551 C1030 652 866 879 712 1126 Q708 1135 696 1135 Z"
             />
         </svg>
     );
